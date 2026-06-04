@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SARMAAN — LGA Coordinator Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#f2f1ec;color:#1c1c1a;font-size:14px;line-height:1.5;}
+header{background:#1c1c1a;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{background:#1D9E75;color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;letter-spacing:.05em;}
+h1{font-size:15px;font-weight:500;}
+.header-meta{font-size:12px;color:#888;margin-top:2px;}
+.header-right{text-align:right;}
+.last-updated{font-size:11px;color:#888;}
+.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;}
+.dot-ok{background:#1D9E75;} .dot-loading{background:#BA7517;} .dot-error{background:#D85A30;}
+.container{max-width:1400px;margin:0 auto;padding:16px 20px;}
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;background:#fff;border:1px solid #e3e2da;border-radius:8px;padding:10px 14px;}
+.filter-bar label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;}
+.filter-bar select{font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;}
+.filter-sep{width:1px;height:20px;background:#e3e2da;margin:0 2px;}
+.btn-reset{font-size:12px;padding:5px 12px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#666;}
+.btn-reset:hover{background:#f5f4ef;}
+.notice{background:#E1F5EE;border:1px solid #9FE1CB;border-radius:7px;padding:8px 14px;font-size:12px;color:#0F6E56;margin-bottom:12px;}
+.error-bar{background:#FAECE7;border:1px solid #F5C4B3;border-radius:7px;padding:8px 14px;font-size:12px;color:#993C1D;margin-bottom:12px;display:none;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px;}
+.kpi{background:#fff;border:1px solid #e3e2da;border-radius:8px;padding:12px 14px;}
+.kpi-label{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.kpi-value{font-size:22px;font-weight:500;line-height:1;}
+.kpi-sub{font-size:11px;color:#aaa;margin-top:3px;}
+.green{color:#1D9E75;} .red{color:#D85A30;} .amber{color:#BA7517;} .blue{color:#185FA5;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.grid-3a{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px;}
+.card{background:#fff;border:1px solid #e3e2da;border-radius:10px;padding:14px 16px;}
+.card-title{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;font-size:11px;color:#666;}
+.ld{width:9px;height:9px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:3px;}
+.bar-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px;}
+.bar-label{color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;}
+.bar-track{flex:1;height:7px;background:#f0efe8;border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;}
+.bar-num{font-weight:600;color:#333;min-width:28px;text-align:right;flex-shrink:0;}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;}
+.b-in{background:#E1F5EE;color:#0F6E56;} .b-out{background:#FAECE7;color:#993C1D;}
+.b-ok{background:#EAF3DE;color:#3B6D11;} .b-warn{background:#FAECE7;color:#993C1D;}
+.b-sec{background:#FAEEDA;color:#633806;}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;margin:14px 0 6px;}
+.tbl-wrap{overflow-x:auto;max-height:460px;overflow-y:auto;}
+table{width:100%;font-size:11px;border-collapse:collapse;}
+th{font-weight:700;color:#aaa;text-align:left;padding:6px 8px;border-bottom:1px solid #e8e7df;font-size:10px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:#fff;z-index:1;white-space:nowrap;}
+td{padding:6px 8px;border-bottom:1px solid #f2f1ec;vertical-align:middle;}
+tr:hover td{background:#f8f7f2;}
+.skeleton{background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:4px;height:16px;width:80%;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media(max-width:750px){.grid-2,.grid-3a{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-badge">SARMAAN</span>
+    <div>
+      <h1>LGA Coordinator Daily Report — Kano AMR</h1>
+      <div class="header-meta">Kano State, Nigeria &nbsp;·&nbsp; 44 LGAs</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="last-updated" id="lastUpdated">
+      <span class="status-dot dot-loading" id="statusDot"></span>
+      <span id="statusText">Loading data...</span>
+    </div>
+    <div style="font-size:11px;color:#555;margin-top:4px;">Auto-refreshes every hour via KoboToolbox API</div>
+  </div>
+</header>
+
+<div class="container">
+
+<div class="error-bar" id="errorBar"></div>
+
+<div class="notice" id="contextNotice">
+  <strong>Context note:</strong> May 13–18: coordinators were at centralized AMR training (Mumbayya House, Dala LGA) — outside-LGA status during this period is expected. Field deployment began ~May 19.
+</div>
+
+<div class="filter-bar">
+  <label>Date</label>
+  <select id="fDate" onchange="apply()"></select>
+  <div class="filter-sep"></div>
+  <label>LGA status</label>
+  <select id="fStatus" onchange="apply()">
+    <option value="all">All</option>
+    <option value="inside">✅ Inside LGA</option>
+    <option value="outside">🛑 Outside LGA</option>
+  </select>
+  <div class="filter-sep"></div>
+  <label>LGA</label>
+  <select id="fLGA" onchange="apply()"></select>
+  <div class="filter-sep"></div>
+  <label>Coordinator</label>
+  <select id="fCoord" onchange="apply()"></select>
+  <div class="filter-sep"></div>
+  <button class="btn-reset" onclick="resetFilters()">↺ Reset</button>
+</div>
+
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Daily submissions — inside vs outside LGA</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#1D9E75;"></span>Inside LGA</span>
+      <span><span class="ld" style="background:#D85A30;"></span>Outside LGA</span>
+    </div>
+    <div style="position:relative;width:100%;height:210px;">
+      <canvas id="cDaily" role="img" aria-label="Stacked bar chart of daily submissions by inside/outside LGA status"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Activity types</div>
+    <div id="actBars" style="padding-top:4px;"></div>
+  </div>
+</div>
+
+<div class="grid-3a">
+  <div class="card">
+    <div class="card-title">Coverage trends over time</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#185FA5;"></span>Wards</span>
+      <span><span class="ld" style="background:#1D9E75;"></span>Settlements</span>
+      <span><span class="ld" style="background:#BA7517;"></span>Data collectors</span>
+      <span><span class="ld" style="background:#D85A30;"></span>Households ÷10</span>
+    </div>
+    <div style="position:relative;width:100%;height:200px;">
+      <canvas id="cCoverage" role="img" aria-label="Line chart of coverage metrics over time"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">LGA status split</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#1D9E75;"></span>Inside</span>
+      <span><span class="ld" style="background:#D85A30;"></span>Outside</span>
+    </div>
+    <div style="position:relative;width:100%;height:150px;">
+      <canvas id="cStatus" role="img" aria-label="Doughnut chart of inside vs outside LGA percentage"></canvas>
+    </div>
+    <div id="statusNums" style="text-align:center;font-size:12px;color:#888;margin-top:6px;"></div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Top coordinators by submission count</div>
+    <div id="coordBars"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Issues flagged</div>
+    <div id="issueBars" style="padding-top:4px;"></div>
+  </div>
+</div>
+
+<div class="section-label">Per-LGA summary</div>
+<div class="card">
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>LGA</th><th>Coordinator</th><th>Submissions</th><th>Days active</th>
+          <th>Inside LGA %</th><th>Wards</th><th>Settlements</th><th>Households</th>
+          <th>Data collectors</th><th>Avg dist km</th>
+          <th>Challenges</th><th>Critical</th><th>Device</th><th>Security</th>
+        </tr>
+      </thead>
+      <tbody id="lgaBody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<script>
+let RAW = [];
+let charts = {};
+
+async function loadData() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    // Use relative path so it works on any GitHub Pages URL
+    const res = await fetch('data.json?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    RAW = json.rows || [];
+    dot.className = 'status-dot dot-ok';
+    txt.textContent = `Live · ${json.fetched_at} · ${RAW.length} submissions`;
+    document.getElementById('errorBar').style.display = 'none';
+    populateFilters();
+    apply();
+  } catch(e) {
+    dot.className = 'status-dot dot-error';
+    txt.textContent = 'Data fetch failed';
+    const eb = document.getElementById('errorBar');
+    eb.style.display = 'block';
+    eb.textContent = `Could not load data.json: ${e.message}. The GitHub Action may not have run yet — check the Actions tab in your repo.`;
+  }
+}
+
+function populateFilters() {
+  const dates  = [...new Set(RAW.map(r=>r.date))].sort();
+  const lgas   = [...new Set(RAW.map(r=>r.lga))].sort();
+  const coords = [...new Set(RAW.map(r=>r.coord))].sort();
+  const sel = (id, opts, label) => {
+    document.getElementById(id).innerHTML =
+      `<option value="all">${label}</option>` +
+      opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+  };
+  sel('fDate',  dates,  'All dates');
+  sel('fLGA',   lgas,   'All LGAs');
+  sel('fCoord', coords, 'All coordinators');
+}
+
+function getFiltered() {
+  const dv = document.getElementById('fDate').value;
+  const sv = document.getElementById('fStatus').value;
+  const lv = document.getElementById('fLGA').value;
+  const cv = document.getElementById('fCoord').value;
+  return RAW.filter(r => {
+    if (dv !== 'all' && r.date !== dv) return false;
+    if (sv === 'inside'  && r.status !== 'inside')  return false;
+    if (sv === 'outside' && r.status !== 'outside') return false;
+    if (lv !== 'all' && r.lga   !== lv) return false;
+    if (cv !== 'all' && r.coord !== cv) return false;
+    return true;
+  });
+}
+
+function resetFilters() {
+  ['fDate','fStatus','fLGA','fCoord'].forEach(id => document.getElementById(id).value = 'all');
+  apply();
+}
+
+function sum(arr, key) { return arr.reduce((a,b) => a + (b[key]||0), 0); }
+
+function apply() {
+  const data = getFiltered();
+  renderKPIs(data);
+  renderDaily(data);
+  renderStatus(data);
+  renderActivity(data);
+  renderCoverage(data);
+  renderCoords(data);
+  renderIssues(data);
+  renderTable(data);
+}
+
+function renderKPIs(data) {
+  const inside = data.filter(r=>r.status==='inside').length;
+  const pct = data.length ? Math.round(inside/data.length*100) : 0;
+  const lgas = new Set(data.map(r=>r.lga)).size;
+  const hh   = sum(data,'hh');
+  const wards = sum(data,'wards');
+  const sett  = sum(data,'settlements');
+  const dcs   = sum(data,'dcs');
+  const ch  = data.filter(r=>r.challenges==='Yes').length;
+  const cr  = data.filter(r=>r.critical==='Yes').length;
+  const sec = data.filter(r=>r.security==='Yes').length;
+  const dv  = data.filter(r=>r.device==='Yes').length;
+  const outsideDists = data.filter(r=>r.status==='outside'&&r.dist_km>0).map(r=>r.dist_km);
+  const avgD = outsideDists.length
+    ? (outsideDists.reduce((a,b)=>a+b,0)/outsideDists.length).toFixed(1)
+    : '—';
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Total submissions</div><div class="kpi-value blue">${data.length}</div></div>
+    <div class="kpi"><div class="kpi-label">Active LGAs</div><div class="kpi-value">${lgas}</div><div class="kpi-sub">of 44</div></div>
+    <div class="kpi"><div class="kpi-label">Inside LGA</div><div class="kpi-value ${pct>=60?'green':'amber'}">${pct}%</div><div class="kpi-sub">${inside} / ${data.length}</div></div>
+    <div class="kpi"><div class="kpi-label">Wards covered</div><div class="kpi-value">${wards.toLocaleString()}</div></div>
+    <div class="kpi"><div class="kpi-label">Settlements</div><div class="kpi-value">${sett.toLocaleString()}</div></div>
+    <div class="kpi"><div class="kpi-label">Households visited</div><div class="kpi-value">${hh.toLocaleString()}</div></div>
+    <div class="kpi"><div class="kpi-label">Data collectors</div><div class="kpi-value">${dcs.toLocaleString()}</div></div>
+    <div class="kpi"><div class="kpi-label">Avg dist (outside)</div><div class="kpi-value amber">${avgD}<span style="font-size:12px;font-weight:400;color:#aaa;"> km</span></div></div>
+    <div class="kpi"><div class="kpi-label">Challenges flagged</div><div class="kpi-value ${ch>0?'amber':''}">${ch}</div></div>
+    <div class="kpi"><div class="kpi-label">Critical issues</div><div class="kpi-value ${cr>0?'red':''}">${cr}</div></div>
+    <div class="kpi"><div class="kpi-label">Device issues</div><div class="kpi-value ${dv>0?'amber':''}">${dv}</div></div>
+    <div class="kpi"><div class="kpi-label">Security incidents</div><div class="kpi-value ${sec>0?'red':''}">${sec}</div></div>
+  `;
+}
+
+function renderDaily(data) {
+  const allDates = [...new Set(RAW.map(r=>r.date))].sort();
+  const byDate = {};
+  allDates.forEach(d=>{ byDate[d]={i:0,o:0}; });
+  data.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]={i:0,o:0}; byDate[r.date][r.status==='inside'?'i':'o']++; });
+  const dates  = Object.keys(byDate).sort();
+  const labels = dates.map(d=>d.slice(5));
+  if (charts.daily) charts.daily.destroy();
+  charts.daily = new Chart(document.getElementById('cDaily'), {
+    type:'bar',
+    data:{labels, datasets:[
+      {label:'Inside LGA',  data:dates.map(d=>byDate[d].i), backgroundColor:'#1D9E75', stack:'s'},
+      {label:'Outside LGA', data:dates.map(d=>byDate[d].o), backgroundColor:'#D85A30', stack:'s'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{stacked:true,ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:20}},
+        y:{stacked:true,ticks:{font:{size:10}}}
+      }
+    }
+  });
+}
+
+function renderStatus(data) {
+  const inside  = data.filter(r=>r.status==='inside').length;
+  const outside = data.length - inside;
+  if (charts.status) charts.status.destroy();
+  charts.status = new Chart(document.getElementById('cStatus'), {
+    type:'doughnut',
+    data:{labels:['Inside','Outside'],datasets:[{data:[inside,outside],backgroundColor:['#1D9E75','#D85A30'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} (${data.length?Math.round(c.raw/data.length*100):0}%)`}}}
+    }
+  });
+  document.getElementById('statusNums').innerHTML =
+    `<strong style="color:#1D9E75;">${inside}</strong> inside &nbsp;·&nbsp; <strong style="color:#D85A30;">${outside}</strong> outside`;
+}
+
+function renderActivity(data) {
+  const acts = [
+    {label:'Survey/data collection training',       key:'training',       color:'#185FA5'},
+    {label:'Field coordination & implementation',    key:'fieldCoord',     color:'#1D9E75'},
+    {label:'Supervision & quality assurance',        key:'supervision',    color:'#BA7517'},
+    {label:'Data monitoring & reporting',            key:'dataMonitor',    color:'#D85A30'},
+    {label:'Stakeholder engagement',                 key:'stakeholder',    color:'#534AB7'},
+    {label:'Team management & support',              key:'teamMgmt',       color:'#0F6E56'},
+    {label:'Problem solving & escalation',           key:'problemSolving', color:'#993C1D'},
+    {label:'Transit',                                key:'transit',        color:'#888780'},
+  ];
+  const max = Math.max(...acts.map(a=>sum(data,a.key)), 1);
+  document.getElementById('actBars').innerHTML = acts.map(a => {
+    const v = sum(data, a.key);
+    const pct = Math.round(v/max*100);
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:195px;" title="${a.label}">${a.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${a.color};"></div></div>
+      <div class="bar-num">${v}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCoverage(data) {
+  const allDates = [...new Set(RAW.map(r=>r.date))].sort();
+  const byDate = {};
+  allDates.forEach(d=>{ byDate[d]={w:0,s:0,dc:0,hh:0}; });
+  data.forEach(r=>{
+    if (!byDate[r.date]) byDate[r.date]={w:0,s:0,dc:0,hh:0};
+    byDate[r.date].w  += r.wards||0;
+    byDate[r.date].s  += r.settlements||0;
+    byDate[r.date].dc += r.dcs||0;
+    byDate[r.date].hh += r.hh||0;
+  });
+  const dates  = Object.keys(byDate).sort();
+  const labels = dates.map(d=>d.slice(5));
+  if (charts.cov) charts.cov.destroy();
+  charts.cov = new Chart(document.getElementById('cCoverage'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Wards',       data:dates.map(d=>byDate[d].w),  borderColor:'#185FA5', backgroundColor:'rgba(24,95,165,0.07)', fill:true, tension:.3, pointRadius:2, borderWidth:2},
+      {label:'Settlements', data:dates.map(d=>byDate[d].s),  borderColor:'#1D9E75', fill:false, tension:.3, borderDash:[4,3], pointRadius:2, borderWidth:2},
+      {label:'DCs',         data:dates.map(d=>byDate[d].dc), borderColor:'#BA7517', fill:false, tension:.3, borderDash:[2,4], pointRadius:2, borderWidth:2},
+      {label:'HH÷10',       data:dates.map(d=>Math.round(byDate[d].hh/10)), borderColor:'#D85A30', fill:false, tension:.3, borderDash:[6,2], pointRadius:2, borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:20}},
+        y:{ticks:{font:{size:10}}}
+      }
+    }
+  });
+}
+
+function renderCoords(data) {
+  const counts = {};
+  data.forEach(r=>{ counts[r.coord]=(counts[r.coord]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('coordBars').innerHTML = sorted.map(([name,v])=>{
+    const short = name.split(' ').slice(0,3).join(' ');
+    const pct = Math.round(v/max*100);
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:165px;" title="${name}">${short}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:#185FA5;"></div></div>
+      <div class="bar-num">${v}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderIssues(data) {
+  const issues = [
+    {label:'Operational challenges', v:data.filter(r=>r.challenges==='Yes').length, color:'#BA7517'},
+    {label:'Critical issues to escalate', v:data.filter(r=>r.critical==='Yes').length, color:'#D85A30'},
+    {label:'Device / technical issues', v:data.filter(r=>r.device==='Yes').length, color:'#534AB7'},
+    {label:'Security / access incidents', v:data.filter(r=>r.security==='Yes').length, color:'#993C1D'},
+  ];
+  const max = Math.max(...issues.map(i=>i.v), 1);
+  document.getElementById('issueBars').innerHTML = issues.map(i=>{
+    const pct = Math.round(i.v/max*100);
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:195px;">${i.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${i.color};"></div></div>
+      <div class="bar-num ${i.v>0?'red':''}">${i.v}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable(data) {
+  const lgas = {};
+  data.forEach(r => {
+    if (!lgas[r.lga]) lgas[r.lga] = {lga:r.lga,coord:r.coord,n:0,inside:0,wards:0,sett:0,hh:0,dcs:0,ch:0,cr:0,dv:0,sec:0,days:new Set(),dists:[]};
+    const l = lgas[r.lga];
+    l.n++; if(r.status==='inside') l.inside++;
+    l.wards+=r.wards||0; l.sett+=r.settlements||0;
+    l.hh+=r.hh||0; l.dcs+=r.dcs||0;
+    if(r.challenges==='Yes') l.ch++;
+    if(r.critical==='Yes')   l.cr++;
+    if(r.device==='Yes')     l.dv++;
+    if(r.security==='Yes')   l.sec++;
+    l.days.add(r.date);
+    if(r.status==='outside' && r.dist_km>0) l.dists.push(r.dist_km);
+  });
+  const rows = Object.values(lgas).sort((a,b)=>b.n-a.n);
+  document.getElementById('lgaBody').innerHTML = rows.map(r => {
+    const pct  = r.n ? Math.round(r.inside/r.n*100) : 0;
+    const avgD = r.dists.length ? (r.dists.reduce((a,b)=>a+b,0)/r.dists.length).toFixed(1) : '—';
+    return `<tr>
+      <td style="font-weight:600;">${r.lga}</td>
+      <td style="color:#777;">${r.coord.split(' ').slice(0,2).join(' ')}</td>
+      <td style="font-weight:600;">${r.n}</td>
+      <td>${r.days.size}</td>
+      <td><span class="badge ${pct>=60?'b-in':'b-out'}">${pct}%</span></td>
+      <td>${r.wards}</td><td>${r.sett}</td><td>${r.hh.toLocaleString()}</td><td>${r.dcs}</td>
+      <td style="color:#BA7517;">${avgD}</td>
+      <td><span class="badge ${r.ch>0?'b-warn':'b-ok'}">${r.ch>0?r.ch+' ⚠':'none'}</span></td>
+      <td><span class="badge ${r.cr>0?'b-warn':'b-ok'}">${r.cr>0?r.cr+' ⚠':'none'}</span></td>
+      <td><span class="badge ${r.dv>0?'b-warn':'b-ok'}">${r.dv>0?r.dv+' ⚠':'none'}</span></td>
+      <td><span class="badge ${r.sec>0?'b-sec':'b-ok'}">${r.sec>0?r.sec+' ⚠':'none'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// Load data on page open, then auto-refresh every 10 minutes
+loadData();
+setInterval(loadData, 10 * 60 * 1000);
+</script>
+</body>
+</html>
