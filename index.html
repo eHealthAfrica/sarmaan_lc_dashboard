@@ -90,7 +90,7 @@ tr:hover td{background:#f8f7f2;}
       <span class="status-dot dot-loading" id="statusDot"></span>
       <span id="statusText">Loading data...</span>
     </div>
-    <div style="font-size:11px;color:#555;margin-top:3px;">Auto-refreshes every hour &nbsp;·&nbsp; <a href="#" onclick="loadData();return false;" style="color:#1D9E75;">Refresh now</a></div>
+    <div style="font-size:11px;color:#555;margin-top:3px;">Data updates every hour via GitHub Action</div>
   </div>
 </header>
 
@@ -395,6 +395,7 @@ function renderDaily(data) {
 }
 
 function renderActivity(data) {
+  var av = document.getElementById('fActivity').value;
   var acts = [
     {label:'Survey / data collection training',  key:'training',       color:'#185FA5'},
     {label:'Field coordination & implementation', key:'fieldCoord',     color:'#1D9E75'},
@@ -405,8 +406,10 @@ function renderActivity(data) {
     {label:'Problem solving & escalation',        key:'problemSolving', color:'#993C1D'},
     {label:'Transit',                             key:'transit',        color:'#888780'}
   ];
-  var max = Math.max.apply(null, acts.map(function(a){return sum(data,a.key);}).concat([1]));
-  document.getElementById('actBars').innerHTML = acts.map(function(a) {
+  // If a specific activity is selected, only show that one
+  var visible = av === 'all' ? acts : acts.filter(function(a){ return a.key === av; });
+  var max = Math.max.apply(null, visible.map(function(a){return sum(data,a.key);}).concat([1]));
+  document.getElementById('actBars').innerHTML = visible.map(function(a) {
     var v = sum(data,a.key), pct = Math.round(v/max*100);
     return '<div class="bar-row"><div class="bar-label" style="width:210px;" title="'+a.label+'">'+a.label+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+a.color+';"></div></div><div class="bar-num">'+v+'</div></div>';
   }).join('');
