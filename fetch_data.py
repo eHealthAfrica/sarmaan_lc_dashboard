@@ -100,7 +100,6 @@ def main():
         "rows":       cleaned,
     }
 
-    os.makedirs("public", exist_ok=True)
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
