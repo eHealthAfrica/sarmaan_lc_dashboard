@@ -49,13 +49,18 @@ def clean(row):
         except (TypeError, ValueError):
             return default
 
-    # Parse date
+    # Parse date (handles both YYYY-MM-DD strings and Excel serial numbers)
     today_raw = row.get("today", row.get("Date of Report", ""))
     try:
-        date_str = str(today_raw)[:10]   # YYYY-MM-DD
+        date_str = str(today_raw)[:10]
         datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        date_str = ""
+        try:
+            # Excel serial date (e.g. 46155)
+            from datetime import timedelta
+            date_str = (datetime(1899, 12, 30) + timedelta(days=int(float(str(today_raw))))).strftime("%Y-%m-%d")
+        except:
+            date_str = ""
 
     result_raw = row.get("result", "")
     status = "inside" if "✅" in str(result_raw) or "Inside" in str(result_raw) else "outside"
@@ -103,7 +108,7 @@ def main():
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
-    print(f"  Written {len(cleaned)} rows to public/data.json")
+    print(f"  Written {len(cleaned)} rows to data.json")
 
 
 if __name__ == "__main__":
