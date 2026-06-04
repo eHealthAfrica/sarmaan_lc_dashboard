@@ -117,7 +117,11 @@ def main():
     print(f"  Got {len(raw)} raw submissions")
     if raw:
         print("  activity_type sample:", repr(raw[0].get("grp_authed/activity_type", "NOT FOUND")))
-        print("  activity codes seen:", list(set(r.get("grp_authed/activity_type", "") for r in raw[:50])))
+        all_codes = set()
+        for r in raw:
+            for code in str(r.get("grp_authed/activity_type", "")).split():
+                all_codes.add(code)
+        print("  all unique activity codes:", sorted(all_codes))
     cleaned = [clean(r) for r in raw]
 
     if cleaned:
