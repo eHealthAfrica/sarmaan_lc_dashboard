@@ -115,7 +115,8 @@ def main():
     print(f"Fetching submissions for asset {ASSET_UID} ...")
     raw = fetch_all_submissions()
     print(f"  Got {len(raw)} raw submissions")
-
+    if raw:
+        print("  activity_type sample:", repr(raw[0].get("grp_authed/activity_type", "NOT FOUND")))
     cleaned = [clean(r) for r in raw]
 
     if cleaned:
