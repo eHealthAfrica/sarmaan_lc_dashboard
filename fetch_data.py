@@ -33,20 +33,17 @@ def fetch_all_submissions():
 
 
 def parse_date(value):
-    """Handle YYYY-MM-DD strings, ISO timestamps, and Excel serial numbers."""
     if not value or str(value).strip() in ("", "None", "nan"):
         return ""
     s = str(value).strip()
-    # Try YYYY-MM-DD (possibly with time suffix)
     try:
         datetime.strptime(s[:10], "%Y-%m-%d")
         return s[:10]
     except ValueError:
         pass
-    # Try Excel serial number (e.g. 46155 or 46155.44)
     try:
         serial = int(float(s))
-        if 40000 < serial < 60000:  # sanity check: years ~2009-2064
+        if 40000 < serial < 60000:
             return (datetime(1899, 12, 30) + timedelta(days=serial)).strftime("%Y-%m-%d")
     except (ValueError, TypeError):
         pass
@@ -71,54 +68,46 @@ def safe_float(v):
         return 0.0
 
 
+def g(row, key):
+    """Get a field, trying both with and without grp_authed/ prefix."""
+    return row.get(f"grp_authed/{key}", row.get(key, ""))
+
+
 def clean(row):
-    # Date — try multiple field names
-    date_str = ""
-    for field in ("today", "Date of Report", "_submission_time"):
-        date_str = parse_date(row.get(field, ""))
-        if date_str:
-            break
+    date_str = parse_date(row.get("today", ""))
+    if not date_str:
+        date_str = parse_date(g(row, "grp_exercise/report_date"))
 
-    # LGA — try multiple field names
-    lga = ""
-    for field in ("auth_lc_lgalabel", "auth_lc_lganame", "active_lga"):
-        lga = str(row.get(field, "")).strip()
-        if lga and lga not in ("None", "nan"):
-            break
+    lga    = str(g(row, "auth_lc_lgalabel")).strip()
+    coord  = str(g(row, "auth_lc_name") or row.get("username", "")).strip()
+    result = str(g(row, "grp_geofence/result"))
+    status = "inside" if ("✅" in result or "Inside" in result) else "outside"
 
-    # Coordinator name
-    coord = ""
-    for field in ("auth_lc_name", "username"):
-        coord = str(row.get(field, "")).strip()
-        if coord and coord not in ("None", "nan"):
-            break
-
-    # Location status
-    result_raw = str(row.get("result", ""))
-    status = "inside" if ("✅" in result_raw or "Inside" in result_raw) else "outside"
+    # Activity types — note the API uses activity_type as a space-separated string
+    activity = str(g(row, "activity_type"))
 
     return {
         "date":          date_str,
         "coord":         coord,
         "lga":           lga,
         "status":        status,
-        "dist_km":       safe_float(row.get("Distance from LGA (km)", 0)),
-        "training":      safe_int(row.get("Type(s) of activities carried out today/Survey Data Collection Training", 0)),
-        "fieldCoord":    safe_int(row.get("Type(s) of activities carried out today/Field Coordination and Implementation", 0)),
-        "supervision":   safe_int(row.get("Type(s) of activities carried out today/Supervision and Quality Assurance", 0)),
-        "dataMonitor":   safe_int(row.get("Type(s) of activities carried out today/Data Monitoring and Reporting", 0)),
-        "stakeholder":   safe_int(row.get("Type(s) of activities carried out today/Stakeholder Engagement and Advocacy", 0)),
-        "teamMgmt":      safe_int(row.get("Type(s) of activities carried out today/Team Management and Support", 0)),
-        "problemSolving":safe_int(row.get("Type(s) of activities carried out today/Problem Solving and Escalation", 0)),
-        "transit":       safe_int(row.get("Type(s) of activities carried out today/Transit", 0)),
-        "wards":         safe_int(row.get("Number of wards covered today", 0)),
-        "settlements":   safe_int(row.get("Number of settlements covered today", 0)),
-        "dcs":           safe_int(row.get("Total data collectors assigned to you today", 0)),
-        "hh":            safe_int(row.get("Total households visited today (approximate)", 0)),
-        "challenges":    yesno(row.get("Were there any challenges?", "No")),
-        "critical":      yesno(row.get("Any other critical issues to escalate to State team?", "No")),
-        "device":        yesno(row.get("Were there any device or technical issues today?", "No")),
-        "security":      yesno(row.get("Were there any security or access incidents today?", "No")),
+        "dist_km":       safe_float(g(row, "grp_geofence/distance_loc_lga")),
+        "training":      1 if "Survey Data Collection Training" in activity else 0,
+        "fieldCoord":    1 if "Field Coordination" in activity else 0,
+        "supervision":   1 if "Supervision" in activity else 0,
+        "dataMonitor":   1 if "Data Monitoring" in activity else 0,
+        "stakeholder":   1 if "Stakeholder" in activity else 0,
+        "teamMgmt":      1 if "Team Management" in activity else 0,
+        "problemSolving":1 if "Problem Solving" in activity else 0,
+        "transit":       1 if "Transit" in activity else 0,
+        "wards":         safe_int(g(row, "grp_summary/show_wards")),
+        "settlements":   safe_int(g(row, "grp_summary/show_settlements")),
+        "dcs":           safe_int(g(row, "grp_summary/sum_dcs_present")),
+        "hh":            safe_int(g(row, "grp_summary/show_households")),
+        "challenges":    yesno(g(row, "grp_dct/dct_challenges")),
+        "critical":      yesno(g(row, "grp_summary/show_critical")),
+        "device":        yesno(g(row, "grp_summary/sum_device_issues")),
+        "security":      yesno(g(row, "grp_summary/sum_security_flag")),
     }
 
 
@@ -127,22 +116,14 @@ def main():
     raw = fetch_all_submissions()
     print(f"  Got {len(raw)} raw submissions")
 
-    if raw:
-        first = raw[0]
-        print("  --- DEBUG: first row sample ---")
-        for field in ("today", "Date of Report", "_submission_time",
-                      "auth_lc_lgalabel", "auth_lc_lganame", "active_lga",
-                      "auth_lc_name", "result"):
-            print(f"  {field}: {repr(first.get(field, 'NOT FOUND'))}")
-        print("  ALL KEYS:", [k for k in first.keys() if any(x in k.lower() for x in ("lga", "result", "auth", "coord", "name"))])
-
     cleaned = [clean(r) for r in raw]
 
     if cleaned:
-        print(f"  Sample cleaned row: date={cleaned[0]['date']!r} lga={cleaned[0]['lga']!r} coord={cleaned[0]['coord']!r}")
+        print(f"  Sample: date={cleaned[0]['date']!r} lga={cleaned[0]['lga']!r} coord={cleaned[0]['coord']!r} status={cleaned[0]['status']!r}")
 
     valid = [r for r in cleaned if r["date"] and r["lga"]]
-    print(f"  Valid rows after filter: {len(valid)}")
+    valid.sort(key=lambda r: (r["date"], r["lga"]))
+    print(f"  Valid rows: {len(valid)}")
 
     output = {
         "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
