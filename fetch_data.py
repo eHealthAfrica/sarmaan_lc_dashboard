@@ -134,7 +134,7 @@ def main():
                       "auth_lc_lgalabel", "auth_lc_lganame", "active_lga",
                       "auth_lc_name", "result"):
             print(f"  {field}: {repr(first.get(field, 'NOT FOUND'))}")
-        print("  --- END DEBUG ---")
+        print("  ALL KEYS:", [k for k in first.keys() if any(x in k.lower() for x in ("lga", "result", "auth", "coord", "name"))])
 
     cleaned = [clean(r) for r in raw]
 
