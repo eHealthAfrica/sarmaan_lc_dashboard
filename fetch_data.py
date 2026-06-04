@@ -101,7 +101,7 @@ def main():
     }
 
     os.makedirs("public", exist_ok=True)
-    with open("public/data.json", "w", encoding="utf-8") as f:
+    with open("data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
     print(f"  Written {len(cleaned)} rows to public/data.json")
