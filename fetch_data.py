@@ -106,9 +106,9 @@ def clean(row):
         "dcs":           safe_int(g(row, "grp_summary/sum_dcs_present")),
         "hh":            safe_int(g(row, "grp_summary/show_households")),
         "challenges":    yesno(g(row, "grp_dct/dct_challenges")),
-        "critical":      yesno(g(row, "grp_summary/show_critical")),
-        "device":        yesno(g(row, "grp_summary/sum_device_issues")),
-        "security":      yesno(g(row, "grp_summary/sum_security_flag")),
+        "critical":      yesno(g(row, "grp_dct/critical_issues")),
+        "device":        yesno(g(row, "grp_dct/device_issues")),
+        "security":      yesno(g(row, "grp_dct/security_incidents")),
     }
 
 
@@ -118,6 +118,13 @@ def main():
     print(f"  Got {len(raw)} raw submissions")
 
     if raw:
+        first = raw[0]
+        print("  critical field:", repr(first.get("grp_authed/grp_dct/critical_issues", "NOT FOUND")))
+        print("  device field:",   repr(first.get("grp_authed/grp_dct/device_issues",   "NOT FOUND")))
+        print("  security field:", repr(first.get("grp_authed/grp_dct/security_incidents","NOT FOUND")))
+        # Also print all grp_dct keys to find the right ones
+        dct_keys = [k for k in first.keys() if "dct" in k.lower() or "critical" in k.lower() or "device" in k.lower() or "security" in k.lower() or "incident" in k.lower()]
+        print("  issue-related keys:", dct_keys)
         activity_raw = raw[0].get("grp_authed/activity_type", "NOT FOUND")
         print("  activity_type sample:", repr(activity_raw))
         print("  activity codes split:", activity_raw.split())
