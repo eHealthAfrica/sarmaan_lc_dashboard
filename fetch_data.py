@@ -135,7 +135,7 @@ def main():
     print(f"  Valid rows: {len(valid)}")
 
     output = {
-        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
         "total":      len(valid),
         "rows":       valid,
     }
