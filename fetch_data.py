@@ -118,30 +118,14 @@ def main():
     print(f"  Got {len(raw)} raw submissions")
 
     if raw:
-        # Print ALL unique keys across first 20 rows to find device/critical/security questions
         all_keys = set()
-        for row in raw[:20]:
+        for row in raw[:10]:
             all_keys.update(row.keys())
-        filtered = sorted([k for k in all_keys if any(x in k.lower() for x in ("device","technical","security","access","incident","critical","escalate"))])
-        print("  Relevant keys found:", filtered)
-        # Also print their values from a row where they might not be empty
-        for row in raw[:50]:
-            for k in filtered:
-                if row.get(k) not in (None, "", "—", "0", 0):
-                    print(f"  Non-empty sample -> {k}: {repr(row.get(k))}")
-                    break
-        activity_raw = raw[0].get("grp_authed/activity_type", "NOT FOUND")
-        print("  activity_type sample:", repr(activity_raw))
-        print("  activity codes split:", activity_raw.split())
-        combos = list(set(r.get("grp_authed/activity_type", "") for r in raw))[:15]
-        print("  activity combos sample:", combos)
+        print("  ALL KEYS:")
+        for k in sorted(all_keys):
+            print(f"    {k}")
 
     cleaned = [clean(r) for r in raw]
-
-    if cleaned:
-        print(f"  Sample: date={cleaned[0]['date']!r} lga={cleaned[0]['lga']!r} coord={cleaned[0]['coord']!r} status={cleaned[0]['status']!r}")
-        print(f"  Sample activities: training={cleaned[0]['training']} field={cleaned[0]['fieldCoord']} sup={cleaned[0]['supervision']} mon={cleaned[0]['dataMonitor']}")
-
     valid = [r for r in cleaned if r["date"] and r["lga"]]
     valid.sort(key=lambda r: (r["date"], r["lga"]))
     print(f"  Valid rows: {len(valid)}")
