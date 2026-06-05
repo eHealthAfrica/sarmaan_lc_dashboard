@@ -78,14 +78,23 @@ def clean(row):
     if not date_str:
         date_str = parse_date(g(row, "grp_exercise/report_date"))
 
-    lga    = str(g(row, "auth_lc_lgalabel")).strip()
-    coord  = str(g(row, "auth_lc_name") or row.get("username", "")).strip()
+    lga   = str(g(row, "auth_lc_lgalabel")).strip()
+    coord = str(g(row, "auth_lc_name") or row.get("username", "")).strip()
     result = str(g(row, "grp_geofence/result"))
     status = "inside" if ("✅" in result or "Inside" in result) else "outside"
 
-    # Fetch activity directly with full key to be safe
     activity = str(row.get("grp_authed/activity_type", ""))
     codes = activity.split()
+
+    # show_critical returns a number or "—" when none; anything > 0 = Yes
+    critical_val = str(g(row, "grp_summary/show_critical")).strip()
+    critical = "Yes" if critical_val not in ("", "0", "—", "None", "nan") else "No"
+
+    # sum_device_issues is a count; > 0 = Yes
+    device = "Yes" if safe_int(g(row, "grp_summary/sum_device_issues")) > 0 else "No"
+
+    # sum_security_flag returns Yes/No
+    security = yesno(g(row, "grp_summary/sum_security_flag"))
 
     return {
         "date":          date_str,
@@ -106,9 +115,9 @@ def clean(row):
         "dcs":           safe_int(g(row, "grp_summary/sum_dcs_present")),
         "hh":            safe_int(g(row, "grp_summary/show_households")),
         "challenges":    yesno(g(row, "grp_dct/dct_challenges")),
-        "critical":      "Yes" if str(g(row, "grp_summary/show_critical")).strip() not in ("", "0", "—", "None", "nan") else "No",
-        "device":        "Yes" if safe_int(g(row, "grp_summary/sum_device_issues")) > 0 else "No",
-        "security":      yesno(g(row, "grp_summary/sum_security_flag")),
+        "critical":      critical,
+        "device":        device,
+        "security":      security,
     }
 
 
@@ -117,18 +126,15 @@ def main():
     raw = fetch_all_submissions()
     print(f"  Got {len(raw)} raw submissions")
 
-    if raw:
-        all_keys = set()
-        for row in raw[:10]:
-            all_keys.update(row.keys())
-        print("  ALL KEYS:")
-        for k in sorted(all_keys):
-            print(f"    {k}")
-
     cleaned = [clean(r) for r in raw]
     valid = [r for r in cleaned if r["date"] and r["lga"]]
     valid.sort(key=lambda r: (r["date"], r["lga"]))
     print(f"  Valid rows: {len(valid)}")
+
+    print(f"  Challenges Yes: {sum(1 for r in valid if r['challenges']=='Yes')}")
+    print(f"  Critical Yes:   {sum(1 for r in valid if r['critical']=='Yes')}")
+    print(f"  Device Yes:     {sum(1 for r in valid if r['device']=='Yes')}")
+    print(f"  Security Yes:   {sum(1 for r in valid if r['security']=='Yes')}")
 
     output = {
         "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
