@@ -479,9 +479,11 @@ function renderTable(data) {
 
   // Compute totals
   var tot = {n:0,inside:0,wards:0,sett:0,hh:0,dcs:0,ch:0,sec:0};
+  var allDays = new Set();
   rows.forEach(function(r){
     tot.n+=r.n; tot.inside+=r.inside; tot.wards+=r.wards; tot.sett+=r.sett;
     tot.hh+=r.hh; tot.dcs+=r.dcs; tot.ch+=r.ch; tot.sec+=r.sec;
+    r.days.forEach(function(d){ allDays.add(d); });
   });
   var totPct = tot.n ? Math.round(tot.inside/tot.n*100) : 0;
 
@@ -504,7 +506,7 @@ function renderTable(data) {
     '<td>TOTAL</td>'+
     '<td style="color:#888;font-weight:400;">'+rows.length+' LGAs</td>'+
     '<td>'+tot.n+'</td>'+
-    '<td>—</td>'+
+    '<td>'+allDays.size+'</td>'+
     '<td><span class="badge '+(totPct>=60?'b-in':'b-out')+'">'+totPct+'%</span></td>'+
     '<td>'+tot.wards+'</td>'+
     '<td>'+tot.sett+'</td>'+
