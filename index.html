@@ -189,9 +189,9 @@ tr:hover td{background:#f8f7f2;}
     <div class="card-desc">Daily totals across all coordinators. Households divided by 10 to share the same axis scale.</div>
   </div>
   <div class="card">
-    <div class="card-title">Top coordinators by submission count</div>
+    <div class="card-title">Coordinator submission count</div>
     <div id="coordBars" style="padding-top:4px;flex:1;"></div>
-    <div class="card-desc">Ranked by number of daily reports submitted. More submissions = more consistent reporting.</div>
+    <div class="card-desc">All coordinators ranked by submission count, highest to lowest. Lower counts may indicate inconsistent reporting.</div>
   </div>
 </div>
 
@@ -452,11 +452,11 @@ function renderCoverage(data) {
 function renderCoords(data) {
   var counts = {};
   data.forEach(function(r){counts[r.coord]=(counts[r.coord]||0)+1;});
-  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,12);
+  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
   var max = sorted.length ? sorted[0][1] : 1;
   document.getElementById('coordBars').innerHTML = sorted.map(function(e2) {
     var name=e2[0],v=e2[1],short=name.split(' ').slice(0,3).join(' '),pct=Math.round(v/max*100);
-    return '<div class="bar-row"><div class="bar-label" style="width:180px;" title="'+name+'">'+short+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:#185FA5;"></div></div><div class="bar-num">'+v+'</div></div>';
+    return '<div class="bar-row"><div class="bar-label" style="width:180px;" title="'+name+'">'+short+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:#0F6E56;"></div></div><div class="bar-num">'+v+'</div></div>';
   }).join('');
 }
 
