@@ -476,7 +476,16 @@ function renderTable(data) {
     l.days.add(r.date);
   });
   var rows = Object.values(lgas).sort(function(a,b){return a.lga.localeCompare(b.lga);});
-  document.getElementById('lgaBody').innerHTML = rows.map(function(r) {
+
+  // Compute totals
+  var tot = {n:0,inside:0,wards:0,sett:0,hh:0,dcs:0,ch:0,sec:0};
+  rows.forEach(function(r){
+    tot.n+=r.n; tot.inside+=r.inside; tot.wards+=r.wards; tot.sett+=r.sett;
+    tot.hh+=r.hh; tot.dcs+=r.dcs; tot.ch+=r.ch; tot.sec+=r.sec;
+  });
+  var totPct = tot.n ? Math.round(tot.inside/tot.n*100) : 0;
+
+  var rowsHtml = rows.map(function(r) {
     var pct=r.n?Math.round(r.inside/r.n*100):0;
     return '<tr>'+
       '<td style="font-weight:600;">'+r.lga+'</td>'+
@@ -489,7 +498,25 @@ function renderTable(data) {
       '<td><span class="badge '+(r.sec>0?'b-sec':'b-ok')+'">'+(r.sec>0?r.sec+' ⚠':'none')+'</span></td>'+
       '</tr>';
   }).join('');
+
+  var totRow =
+    '<tr style="background:#e8e7df;font-weight:700;border-top:2px solid #aaa;">'+
+    '<td>TOTAL</td>'+
+    '<td style="color:#888;font-weight:400;">'+rows.length+' LGAs</td>'+
+    '<td>'+tot.n+'</td>'+
+    '<td>—</td>'+
+    '<td><span class="badge '+(totPct>=60?'b-in':'b-out')+'">'+totPct+'%</span></td>'+
+    '<td>'+tot.wards+'</td>'+
+    '<td>'+tot.sett+'</td>'+
+    '<td>'+tot.hh.toLocaleString()+'</td>'+
+    '<td>'+tot.dcs+'</td>'+
+    '<td><span class="badge '+(tot.ch>0?'b-warn':'b-ok')+'">'+(tot.ch>0?tot.ch+' ⚠':'none')+'</span></td>'+
+    '<td><span class="badge '+(tot.sec>0?'b-sec':'b-ok')+'">'+(tot.sec>0?tot.sec+' ⚠':'none')+'</span></td>'+
+    '</tr>';
+
+  document.getElementById('lgaBody').innerHTML = rowsHtml + totRow;
 }
+
 
 loadData();
 setInterval(loadData, 10 * 60 * 1000);
