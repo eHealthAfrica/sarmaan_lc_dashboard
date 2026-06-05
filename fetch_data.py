@@ -86,9 +86,9 @@ def clean(row):
     activity = str(row.get("grp_authed/activity_type", ""))
     codes = activity.split()
 
-    # show_critical returns a number or "—" when none; anything > 0 = Yes
-    critical_val = str(g(row, "grp_summary/show_critical")).strip()
-    critical = "Yes" if critical_val not in ("", "0", "—", "None", "nan") else "No"
+    # show_critical: "Yes — <description>" or "No"
+    critical_raw = str(g(row, "grp_summary/show_critical")).strip().lower()
+    critical = "Yes" if critical_raw.startswith("yes") else "No"
 
     # sum_device_issues is a count; > 0 = Yes
     device = "Yes" if safe_int(g(row, "grp_summary/sum_device_issues")) > 0 else "No"
