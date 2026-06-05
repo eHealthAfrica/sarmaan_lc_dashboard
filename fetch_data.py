@@ -106,9 +106,9 @@ def clean(row):
         "dcs":           safe_int(g(row, "grp_summary/sum_dcs_present")),
         "hh":            safe_int(g(row, "grp_summary/show_households")),
         "challenges":    yesno(g(row, "grp_dct/dct_challenges")),
-        "critical":      "Yes" if safe_int(g(row, "grp_summary/show_critical")) > 0 else "No",
+        "critical":      "Yes" if str(g(row, "grp_summary/show_critical")).strip() not in ("", "0", "—", "None", "nan") else "No",
         "device":        "Yes" if safe_int(g(row, "grp_summary/sum_device_issues")) > 0 else "No",
-        "security":      "Yes" if safe_int(g(row, "grp_summary/sum_security_flag")) > 0 else "No",
+        "security":      yesno(g(row, "grp_summary/sum_security_flag")),
     }
 
 
@@ -118,15 +118,18 @@ def main():
     print(f"  Got {len(raw)} raw submissions")
 
     if raw:
-        first = raw[0]
-        print("  ALL grp_dct fields:")
-        for k,v in first.items():
-            if "dct" in k.lower():
-                print(f"    {k}: {repr(v)}")
-        print("  ALL grp_summary fields:")
-        for k,v in first.items():
-            if "summary" in k.lower():
-                print(f"    {k}: {repr(v)}")
+        # Print ALL unique keys across first 20 rows to find device/critical/security questions
+        all_keys = set()
+        for row in raw[:20]:
+            all_keys.update(row.keys())
+        filtered = sorted([k for k in all_keys if any(x in k.lower() for x in ("device","technical","security","access","incident","critical","escalate"))])
+        print("  Relevant keys found:", filtered)
+        # Also print their values from a row where they might not be empty
+        for row in raw[:50]:
+            for k in filtered:
+                if row.get(k) not in (None, "", "—", "0", 0):
+                    print(f"  Non-empty sample -> {k}: {repr(row.get(k))}")
+                    break
         activity_raw = raw[0].get("grp_authed/activity_type", "NOT FOUND")
         print("  activity_type sample:", repr(activity_raw))
         print("  activity codes split:", activity_raw.split())
