@@ -289,7 +289,16 @@ async function loadData() {
     var json = await res.json();
     RAW = json.rows || [];
     dot.className = 'status-dot dot-ok';
-    txt.textContent = 'Live · ' + json.fetched_at + ' · ' + RAW.length + ' submissions';
+    var utcDate = new Date(json.fetched_at.replace(' UTC','Z'));
+    var watHours = utcDate.getUTCHours() + 1;
+    var watDate = new Date(utcDate);
+    watDate.setUTCHours(watHours);
+    var watStr = watDate.getUTCFullYear() + '-' +
+      String(watDate.getUTCMonth()+1).padStart(2,'0') + '-' +
+      String(watDate.getUTCDate()).padStart(2,'0') + ' ' +
+      String(watDate.getUTCHours()).padStart(2,'0') + ':' +
+      String(watDate.getUTCMinutes()).padStart(2,'0') + ' WAT';
+    txt.textContent = 'Live · ' + watStr + ' · ' + RAW.length + ' submissions';
     document.getElementById('errorBar').style.display = 'none';
     populateFilters();
     apply();
