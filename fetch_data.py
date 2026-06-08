@@ -94,29 +94,18 @@ def clean(row):
     # Challenges: dct_challenges Yes/No
     challenges = yesno(g(row, "grp_dct/dct_challenges"))
 
-    # Critical, device, security: use actual question fields
-    # Will be mapped correctly once we confirm API paths
-    critical = yesno(g(row, "grp_dct/critical_issues_any"))
-    device   = yesno(g(row, "grp_dct/device_issues_any"))
-    security = yesno(g(row, "grp_dct/security_incident_any"))
+    # Critical: actual question field
+    critical = yesno(row.get("grp_authed/grp_dc_roster/critical_issues_any", "no"))
 
-    # Fallback to summary fields if question fields return No for all
-    if critical == "No":
-        critical_raw = str(g(row, "grp_summary/show_critical")).strip().lower()
-        if critical_raw.startswith("yes"):
-            critical = "Yes"
+    # Device: actual question field
+    device = yesno(row.get("grp_authed/grp_devices/device_issues_any", "no"))
 
-    if device == "No":
-        device_count_fb = safe_int(g(row, "grp_summary/sum_device_issues"))
-        unresolved_fb   = safe_int(g(row, "grp_summary/sum_unresolved_devices"))
-        if device_count_fb > 0 or unresolved_fb > 0:
-            device = "Yes"
+    # Device count: length of the device_issues list (actual logged devices)
+    device_issues_list = row.get("grp_authed/grp_devices/device_issues", [])
+    device_count = len(device_issues_list) if isinstance(device_issues_list, list) else safe_int(device_issues_list)
 
-    if security == "No":
-        if str(g(row, "grp_summary/sum_security_flag")).strip().lower() in ("yes","1","true"):
-            security = "Yes"
-
-    device_count = safe_int(g(row, "grp_summary/sum_device_issues"))
+    # Security: actual question field
+    security = yesno(row.get("grp_authed/grp_security/security_incident_any", "no"))
 
     dcs_present     = safe_int(g(row, "grp_summary/sum_dcs_present"))
     dcs_partial     = safe_int(g(row, "grp_summary/sum_dcs_partial"))
@@ -158,16 +147,6 @@ def main():
     print(f"Fetching submissions for asset {ASSET_UID} ...")
     raw = fetch_all_submissions()
     print(f"  Got {len(raw)} raw submissions")
-
-    # Debug: find exact API paths for issue question fields
-    all_keys = set()
-    for row in raw:
-        all_keys.update(row.keys())
-    print("  Keys with device/critical/security/incident:")
-    for k in sorted(all_keys):
-        if any(x in k.lower() for x in ("device", "critical", "security", "incident")):
-            sample = next((row.get(k) for row in raw if row.get(k) not in (None, "", "nan")), "ALL EMPTY")
-            print(f"    {k}: sample={repr(sample)}")
 
     cleaned = [clean(r) for r in raw]
     valid = [r for r in cleaned if r["date"] and r["lga"]]
