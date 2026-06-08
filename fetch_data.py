@@ -68,6 +68,11 @@ def safe_float(v):
         return 0.0
 
 
+def safe_str(v):
+    s = str(v).strip()
+    return "" if s in ("None", "nan", "—") else s
+
+
 def g(row, key):
     """Get a field, trying both with and without grp_authed/ prefix."""
     return row.get(f"grp_authed/{key}", row.get(key, ""))
@@ -78,46 +83,81 @@ def clean(row):
     if not date_str:
         date_str = parse_date(g(row, "grp_exercise/report_date"))
 
-    lga   = str(g(row, "auth_lc_lgalabel")).strip()
-    coord = str(g(row, "auth_lc_name") or row.get("username", "")).strip()
+    lga    = str(g(row, "auth_lc_lgalabel")).strip()
+    coord  = str(g(row, "auth_lc_name") or row.get("username", "")).strip()
     result = str(g(row, "grp_geofence/result"))
     status = "inside" if ("✅" in result or "Inside" in result) else "outside"
 
     activity = str(row.get("grp_authed/activity_type", ""))
     codes = activity.split()
 
-    # show_critical: "Yes — <description>" or "No"
+    # --- Issue fields: use actual computed fields from API ---
+    # Challenges: dct_challenges Yes/No
+    challenges = yesno(g(row, "grp_dct/dct_challenges"))
+
+    # Critical: show_critical starts with "Yes" when escalated
     critical_raw = str(g(row, "grp_summary/show_critical")).strip().lower()
     critical = "Yes" if critical_raw.startswith("yes") else "No"
 
-    # sum_device_issues is a count; > 0 = Yes
-    device = "Yes" if safe_int(g(row, "grp_summary/sum_device_issues")) > 0 else "No"
+    # Device: sum_device_issues > 0 OR sum_unresolved_devices > 0
+    device_count = safe_int(g(row, "grp_summary/sum_device_issues"))
+    unresolved   = safe_int(g(row, "grp_summary/sum_unresolved_devices"))
+    device = "Yes" if (device_count > 0 or unresolved > 0) else "No"
 
-    # sum_security_flag returns Yes/No
+    # Device logged zero flag: device=Yes but both counts=0 (data quality issue)
+    # We detect this by checking if show_critical-style field exists for device
+    # Since we can't access the raw question, we flag when device=No but
+    # a manual review shows discrepancy — instead, flag dynamically:
+    # device_zero_flag = device count is 0 but we still want to track
+    # NOTE: we add a separate field for this data quality check
+    device_yes_zero = "Yes" if (device_count == 0 and unresolved == 0 and
+                                 str(g(row, "grp_summary/sum_device_issues")).strip() not in ("", "None", "nan")) else "No"
+    # Simpler: we can't detect this from API alone, skip the flag field here
+    # The insights page will handle it by cross-referencing
+
+    # Security: sum_security_flag Yes/No
     security = yesno(g(row, "grp_summary/sum_security_flag"))
 
+    # --- DC metrics ---
+    dcs_present = safe_int(g(row, "grp_summary/sum_dcs_present"))
+    dcs_partial = safe_int(g(row, "grp_summary/sum_dcs_partial"))
+    dcs_absent  = safe_int(g(row, "grp_summary/sum_dcs_absent"))
+    forms_completed = safe_int(g(row, "grp_summary/sum_forms_completed"))
+
+    # --- Outside reason ---
+    outside_reason = safe_str(g(row, "grp_geofence/outside_lga_reason"))
+
     return {
-        "date":          date_str,
-        "coord":         coord,
-        "lga":           lga,
-        "status":        status,
-        "dist_km":       safe_float(g(row, "grp_geofence/distance_loc_lga")),
-        "training":      1 if "dct"     in codes else 0,
-        "fieldCoord":    1 if "field"   in codes else 0,
-        "supervision":   1 if "sup"     in codes else 0,
-        "dataMonitor":   1 if "mon"     in codes else 0,
-        "stakeholder":   1 if "stk"     in codes else 0,
-        "teamMgmt":      1 if "tmg"     in codes else 0,
-        "problemSolving":1 if "esc"     in codes else 0,
-        "transit":       1 if "transit" in codes else 0,
-        "wards":         safe_int(g(row, "grp_summary/show_wards")),
-        "settlements":   safe_int(g(row, "grp_summary/show_settlements")),
-        "dcs":           safe_int(g(row, "grp_summary/sum_dcs_present")),
-        "hh":            safe_int(g(row, "grp_summary/show_households")),
-        "challenges":    yesno(g(row, "grp_dct/dct_challenges")),
-        "critical":      critical,
-        "device":        device,
-        "security":      security,
+        "date":           date_str,
+        "coord":          coord,
+        "lga":            lga,
+        "status":         status,
+        "dist_km":        safe_float(g(row, "grp_geofence/distance_loc_lga")),
+        "outside_reason": outside_reason,
+        # Activity flags
+        "training":       1 if "dct"     in codes else 0,
+        "fieldCoord":     1 if "field"   in codes else 0,
+        "supervision":    1 if "sup"     in codes else 0,
+        "dataMonitor":    1 if "mon"     in codes else 0,
+        "stakeholder":    1 if "stk"     in codes else 0,
+        "teamMgmt":       1 if "tmg"     in codes else 0,
+        "problemSolving": 1 if "esc"     in codes else 0,
+        "transit":        1 if "transit" in codes else 0,
+        # Coverage
+        "wards":          safe_int(g(row, "grp_summary/show_wards")),
+        "settlements":    safe_int(g(row, "grp_summary/show_settlements")),
+        "hh":             safe_int(g(row, "grp_summary/show_households")),
+        # DC metrics
+        "dcs":            dcs_present,
+        "dcs_partial":    dcs_partial,
+        "dcs_absent":     dcs_absent,
+        "forms_completed":forms_completed,
+        # Issues
+        "challenges":     challenges,
+        "critical":       critical,
+        "device":         device,
+        "device_count":   device_count,
+        "security":       security,
     }
 
 
@@ -131,10 +171,11 @@ def main():
     valid.sort(key=lambda r: (r["date"], r["lga"]))
     print(f"  Valid rows: {len(valid)}")
 
-    print(f"  Challenges Yes: {sum(1 for r in valid if r['challenges']=='Yes')}")
-    print(f"  Critical Yes:   {sum(1 for r in valid if r['critical']=='Yes')}")
-    print(f"  Device Yes:     {sum(1 for r in valid if r['device']=='Yes')}")
-    print(f"  Security Yes:   {sum(1 for r in valid if r['security']=='Yes')}")
+    print(f"  Challenges Yes:  {sum(1 for r in valid if r['challenges']=='Yes')}")
+    print(f"  Critical Yes:    {sum(1 for r in valid if r['critical']=='Yes')}")
+    print(f"  Device Yes:      {sum(1 for r in valid if r['device']=='Yes')}")
+    print(f"  Security Yes:    {sum(1 for r in valid if r['security']=='Yes')}")
+    print(f"  Device+zero flag:{sum(1 for r in valid if r['device']=='No' and r['device_count']==0)}")
 
     output = {
         "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
