@@ -175,7 +175,7 @@ def main():
     print(f"  Critical Yes:    {sum(1 for r in valid if r['critical']=='Yes')}")
     print(f"  Device Yes:      {sum(1 for r in valid if r['device']=='Yes')}")
     print(f"  Security Yes:    {sum(1 for r in valid if r['security']=='Yes')}")
-    print(f"  Device+zero flag:{sum(1 for r in valid if r['device']=='No' and r['device_count']==0)}")
+    print(f"  Device Yes+zero count:{sum(1 for r in valid if r['device']=='Yes' and r['device_count']==0)}")
 
     output = {
         "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
