@@ -91,32 +91,21 @@ def clean(row):
     activity = str(row.get("grp_authed/activity_type", ""))
     codes = activity.split()
 
-    # --- Issue fields: use actual computed fields from API ---
+    # --- Issue fields: use actual question fields from API ---
     # Challenges: dct_challenges Yes/No
     challenges = yesno(g(row, "grp_dct/dct_challenges"))
 
-    # Critical: show_critical starts with "Yes" when escalated
-    critical_raw = str(g(row, "grp_summary/show_critical")).strip().lower()
-    critical = "Yes" if critical_raw.startswith("yes") else "No"
+    # Critical: actual question field
+    critical = yesno(g(row, "grp_dct/critical_issues_any"))
 
-    # Device: sum_device_issues > 0 OR sum_unresolved_devices > 0
+    # Device: actual question field
+    device = yesno(g(row, "grp_dct/device_issues_any"))
+
+    # Device count from summary (for DQ flag: device=Yes but count=0)
     device_count = safe_int(g(row, "grp_summary/sum_device_issues"))
-    unresolved   = safe_int(g(row, "grp_summary/sum_unresolved_devices"))
-    device = "Yes" if (device_count > 0 or unresolved > 0) else "No"
 
-    # Device logged zero flag: device=Yes but both counts=0 (data quality issue)
-    # We detect this by checking if show_critical-style field exists for device
-    # Since we can't access the raw question, we flag when device=No but
-    # a manual review shows discrepancy — instead, flag dynamically:
-    # device_zero_flag = device count is 0 but we still want to track
-    # NOTE: we add a separate field for this data quality check
-    device_yes_zero = "Yes" if (device_count == 0 and unresolved == 0 and
-                                 str(g(row, "grp_summary/sum_device_issues")).strip() not in ("", "None", "nan")) else "No"
-    # Simpler: we can't detect this from API alone, skip the flag field here
-    # The insights page will handle it by cross-referencing
-
-    # Security: sum_security_flag Yes/No
-    security = yesno(g(row, "grp_summary/sum_security_flag"))
+    # Security: actual question field
+    security = yesno(g(row, "grp_dct/security_incident_any"))
 
     # --- DC metrics ---
     dcs_present = safe_int(g(row, "grp_summary/sum_dcs_present"))
@@ -175,7 +164,7 @@ def main():
     print(f"  Critical Yes:    {sum(1 for r in valid if r['critical']=='Yes')}")
     print(f"  Device Yes:      {sum(1 for r in valid if r['device']=='Yes')}")
     print(f"  Security Yes:    {sum(1 for r in valid if r['security']=='Yes')}")
-    print(f"  Device Yes+zero count:{sum(1 for r in valid if r['device']=='Yes' and r['device_count']==0)}")
+    print(f"  Device Yes+zero count: {sum(1 for r in valid if r['device']=='Yes' and r['device_count']==0)}")
 
     output = {
         "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
