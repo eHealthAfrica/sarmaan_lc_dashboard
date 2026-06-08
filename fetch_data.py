@@ -136,10 +136,25 @@ def clean(row):
         "dcs_absent":     dcs_absent,
         "forms_completed":forms_completed,
         "challenges":     challenges,
+        "challenge_desc": safe_str(g(row, "grp_dct/dct_challenge_desc")),
         "critical":       critical,
+        "critical_desc":  safe_str(row.get("grp_authed/grp_dc_roster/critical_issues_desc", "")),
         "device":         device,
         "device_count":   device_count,
+        "device_details": [
+            {
+                "owner":   safe_str(d.get("grp_authed/grp_devices/device_issues/device_owner","")),
+                "type":    safe_str(d.get("grp_authed/grp_devices/device_issues/device_issue_type","")),
+                "desc":    safe_str(d.get("grp_authed/grp_devices/device_issues/device_issue_desc","")),
+                "resolved":safe_str(d.get("grp_authed/grp_devices/device_issues/device_issue_resolved","")),
+                "action":  safe_str(d.get("grp_authed/grp_devices/device_issues/device_pending_action",""))
+            }
+            for d in (device_issues_list if isinstance(device_issues_list, list) else [])
+        ],
         "security":       security,
+        "security_desc":  safe_str(row.get("grp_authed/grp_security/security_desc", "")),
+        "security_location": safe_str(row.get("grp_authed/grp_security/security_location", "")),
+        "security_action":safe_str(row.get("grp_authed/grp_security/security_action", "")),
     }
 
 
