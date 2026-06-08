@@ -91,30 +91,38 @@ def clean(row):
     activity = str(row.get("grp_authed/activity_type", ""))
     codes = activity.split()
 
-    # --- Issue fields: use actual question fields from API ---
     # Challenges: dct_challenges Yes/No
     challenges = yesno(g(row, "grp_dct/dct_challenges"))
 
-    # Critical: actual question field
+    # Critical, device, security: use actual question fields
+    # Will be mapped correctly once we confirm API paths
     critical = yesno(g(row, "grp_dct/critical_issues_any"))
-
-    # Device: actual question field
-    device = yesno(g(row, "grp_dct/device_issues_any"))
-
-    # Device count from summary (for DQ flag: device=Yes but count=0)
-    device_count = safe_int(g(row, "grp_summary/sum_device_issues"))
-
-    # Security: actual question field
+    device   = yesno(g(row, "grp_dct/device_issues_any"))
     security = yesno(g(row, "grp_dct/security_incident_any"))
 
-    # --- DC metrics ---
-    dcs_present = safe_int(g(row, "grp_summary/sum_dcs_present"))
-    dcs_partial = safe_int(g(row, "grp_summary/sum_dcs_partial"))
-    dcs_absent  = safe_int(g(row, "grp_summary/sum_dcs_absent"))
-    forms_completed = safe_int(g(row, "grp_summary/sum_forms_completed"))
+    # Fallback to summary fields if question fields return No for all
+    if critical == "No":
+        critical_raw = str(g(row, "grp_summary/show_critical")).strip().lower()
+        if critical_raw.startswith("yes"):
+            critical = "Yes"
 
-    # --- Outside reason ---
-    outside_reason = safe_str(g(row, "grp_geofence/outside_lga_reason"))
+    if device == "No":
+        device_count_fb = safe_int(g(row, "grp_summary/sum_device_issues"))
+        unresolved_fb   = safe_int(g(row, "grp_summary/sum_unresolved_devices"))
+        if device_count_fb > 0 or unresolved_fb > 0:
+            device = "Yes"
+
+    if security == "No":
+        if str(g(row, "grp_summary/sum_security_flag")).strip().lower() in ("yes","1","true"):
+            security = "Yes"
+
+    device_count = safe_int(g(row, "grp_summary/sum_device_issues"))
+
+    dcs_present     = safe_int(g(row, "grp_summary/sum_dcs_present"))
+    dcs_partial     = safe_int(g(row, "grp_summary/sum_dcs_partial"))
+    dcs_absent      = safe_int(g(row, "grp_summary/sum_dcs_absent"))
+    forms_completed = safe_int(g(row, "grp_summary/sum_forms_completed"))
+    outside_reason  = safe_str(g(row, "grp_geofence/outside_lga_reason"))
 
     return {
         "date":           date_str,
@@ -123,7 +131,6 @@ def clean(row):
         "status":         status,
         "dist_km":        safe_float(g(row, "grp_geofence/distance_loc_lga")),
         "outside_reason": outside_reason,
-        # Activity flags
         "training":       1 if "dct"     in codes else 0,
         "fieldCoord":     1 if "field"   in codes else 0,
         "supervision":    1 if "sup"     in codes else 0,
@@ -132,16 +139,13 @@ def clean(row):
         "teamMgmt":       1 if "tmg"     in codes else 0,
         "problemSolving": 1 if "esc"     in codes else 0,
         "transit":        1 if "transit" in codes else 0,
-        # Coverage
         "wards":          safe_int(g(row, "grp_summary/show_wards")),
         "settlements":    safe_int(g(row, "grp_summary/show_settlements")),
         "hh":             safe_int(g(row, "grp_summary/show_households")),
-        # DC metrics
         "dcs":            dcs_present,
         "dcs_partial":    dcs_partial,
         "dcs_absent":     dcs_absent,
         "forms_completed":forms_completed,
-        # Issues
         "challenges":     challenges,
         "critical":       critical,
         "device":         device,
@@ -155,6 +159,16 @@ def main():
     raw = fetch_all_submissions()
     print(f"  Got {len(raw)} raw submissions")
 
+    # Debug: find exact API paths for issue question fields
+    all_keys = set()
+    for row in raw:
+        all_keys.update(row.keys())
+    print("  Keys with device/critical/security/incident:")
+    for k in sorted(all_keys):
+        if any(x in k.lower() for x in ("device", "critical", "security", "incident")):
+            sample = next((row.get(k) for row in raw if row.get(k) not in (None, "", "nan")), "ALL EMPTY")
+            print(f"    {k}: sample={repr(sample)}")
+
     cleaned = [clean(r) for r in raw]
     valid = [r for r in cleaned if r["date"] and r["lga"]]
     valid.sort(key=lambda r: (r["date"], r["lga"]))
@@ -164,7 +178,7 @@ def main():
     print(f"  Critical Yes:    {sum(1 for r in valid if r['critical']=='Yes')}")
     print(f"  Device Yes:      {sum(1 for r in valid if r['device']=='Yes')}")
     print(f"  Security Yes:    {sum(1 for r in valid if r['security']=='Yes')}")
-    print(f"  Device Yes+zero count: {sum(1 for r in valid if r['device']=='Yes' and r['device_count']==0)}")
+    print(f"  Device Yes+zero: {sum(1 for r in valid if r['device']=='Yes' and r['device_count']==0)}")
 
     output = {
         "fetched_at": (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M WAT"),
