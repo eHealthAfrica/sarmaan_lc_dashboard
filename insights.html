@@ -351,8 +351,11 @@ function apply() {
 }
 
 function buildLGAMap(data) {
-  // Start with all LGAs from RAW so all 44 appear
+  // For Per-LGA cards: use all 44 from RAW as base
+  // For highlights: only use filtered data (handled in renderHighlights directly from data param)
   var allLGASet = {};
+
+  // Always seed all 44 LGAs from RAW for the Per-LGA cards section
   RAW.forEach(function(r) {
     if (!allLGASet[r.lga]) allLGASet[r.lga] = {
       lga:r.lga, coord:r.coord, n:0, inside:0,
@@ -402,7 +405,22 @@ function buildLGAMap(data) {
 }
 
 function renderHighlights(data, lgaMap) {
-  var rows = Object.values(lgaMap);
+  // Step 1: rank ALL 44 LGAs across full dataset
+  var fullMap = {};
+  RAW.forEach(function(r) {
+    if (!fullMap[r.lga]) fullMap[r.lga] = {
+      lga:r.lga, n:0, inside:0, hh:0, dcs:0, days:new Set(), ch:0, lastDate:''
+    };
+    var l = fullMap[r.lga];
+    l.n++; if(r.status==='inside') l.inside++;
+    l.hh+=r.hh||0; l.dcs+=r.dcs||0; l.ch+=(r.challenges==='Yes'?1:0);
+    l.days.add(r.date);
+    if(!l.lastDate || r.date > l.lastDate) l.lastDate = r.date;
+  });
+  // Step 2: get the set of LGAs that pass the current filter
+  var filteredLGAs = new Set(data.map(function(r){return r.lga;}));
+  // Step 3: filter ranked rows to only those in the filtered set
+  var rows = Object.values(fullMap).filter(function(r){return filteredLGAs.has(r.lga);});
   var yesterday = getYesterdayStr();
 
   var bySubmissions = rows.filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;});
