@@ -208,6 +208,9 @@ h1{font-size:14px;font-weight:500;}
 </div>
 
 <div class="section-header">&#9889; Performance Highlights</div>
+<div style="background:#f8f7f2;border:1px solid #e3e2da;border-radius:7px;padding:8px 14px;font-size:11px;color:#666;margin-bottom:12px;">
+  <strong>Note:</strong> Performance Highlights reflect the full dataset across all 44 LGAs and are not affected by the filters above. They represent the true picture of the entire data collection period.
+</div>
 <div class="highlights-grid" id="highlightsGrid"></div>
 
 <div class="section-header">&#9888; Data Quality Flags</div>
@@ -417,10 +420,8 @@ function renderHighlights(data, lgaMap) {
     l.days.add(r.date);
     if(!l.lastDate || r.date > l.lastDate) l.lastDate = r.date;
   });
-  // Step 2: get the set of LGAs that pass the current filter
-  var filteredLGAs = new Set(data.map(function(r){return r.lga;}));
-  // Step 3: filter ranked rows to only those in the filtered set
-  var rows = Object.values(fullMap).filter(function(r){return filteredLGAs.has(r.lga);});
+  // Highlights always show all 44 LGAs — filter does not apply here
+  var rows = Object.values(fullMap);
   var yesterday = getYesterdayStr();
 
   var bySubmissions = rows.filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;});
