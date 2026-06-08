@@ -408,7 +408,7 @@ function buildLGAMap(data) {
 }
 
 function renderHighlights(data, lgaMap) {
-  // Step 1: rank ALL 44 LGAs across full dataset
+  // Step 1: always rank ALL 44 LGAs using full RAW data
   var fullMap = {};
   RAW.forEach(function(r) {
     if (!fullMap[r.lga]) fullMap[r.lga] = {
@@ -420,27 +420,43 @@ function renderHighlights(data, lgaMap) {
     l.days.add(r.date);
     if(!l.lastDate || r.date > l.lastDate) l.lastDate = r.date;
   });
-  // Highlights always show all 44 LGAs — filter does not apply here
-  var rows = Object.values(fullMap);
+  var allRows = Object.values(fullMap);
+
+  // Step 2: get filtered LGA (if any)
+  var lv = document.getElementById('fLGA').value;
   var yesterday = getYesterdayStr();
 
-  var bySubmissions = rows.filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;});
+  // Step 3: compute all ranked lists from full data
+  var bySubmissions = allRows.filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;});
   var topSubs    = bySubmissions.slice(0,5);
   var bottomSubs = bySubmissions.slice(-5).reverse();
-  var byHH       = rows.filter(function(r){return r.hh>0;}).sort(function(a,b){return b.hh-a.hh;});
+  var byHH       = allRows.filter(function(r){return r.hh>0;}).sort(function(a,b){return b.hh-a.hh;});
   var topHH      = byHH.slice(0,5);
   var bottomHH   = byHH.slice(-5).reverse();
-  var zeroHH     = rows.filter(function(r){return r.hh===0;});
-  // Flag LGAs whose last submission is yesterday or earlier (2+ days ago means lastDate < yesterday)
-  var inactive   = rows.filter(function(r){return r.lastDate && r.lastDate < yesterday;})
-                       .sort(function(a,b){return a.lastDate.localeCompare(b.lastDate);});
-  var byInside   = rows.filter(function(r){return r.n>0;})
-                       .map(function(r){return {lga:r.lga,pct:Math.round(r.inside/r.n*100),n:r.n};})
-                       .sort(function(a,b){return b.pct-a.pct;});
-  var lowDC      = rows.filter(function(r){return r.n>0&&r.dcs>0;})
-                       .sort(function(a,b){return a.dcs-b.dcs;}).slice(0,5);
+  var zeroHH     = allRows.filter(function(r){return r.hh===0;});
+  var inactive   = allRows.filter(function(r){return r.lastDate && r.lastDate < yesterday;})
+                          .sort(function(a,b){return a.lastDate.localeCompare(b.lastDate);});
+  var byInside   = allRows.filter(function(r){return r.n>0;})
+                          .map(function(r){return {lga:r.lga,pct:Math.round(r.inside/r.n*100),n:r.n};})
+                          .sort(function(a,b){return b.pct-a.pct;});
+  var lowDC      = allRows.filter(function(r){return r.n>0&&r.dcs>0;})
+                          .sort(function(a,b){return a.dcs-b.dcs;}).slice(0,5);
 
-  function card(cls, title, descHtml, listHtml) {
+  // Step 4: if LGA filter active, filter each ranked list to only show that LGA
+  // If the LGA isn't in the list, the card will be empty
+  function applyLGAFilter(list) {
+    if (lv === 'all') return list;
+    return list.filter(function(r){ return r.lga === lv; });
+  }
+  function emptyMsg() {
+    return lv === 'all' ? '' : '<li style="font-size:11px;color:#aaa;padding:8px 0;">'+lv+' is not in this ranking.</li>';
+  }
+
+  function card(cls, title, descHtml, list, rowFn) {
+    var filtered = applyLGAFilter(list);
+    var listHtml = filtered.length
+      ? filtered.map(rowFn).join('')
+      : emptyMsg();
     return '<div class="highlight-card '+cls+'">'+
       '<div class="highlight-title">'+title+'</div>'+
       (descHtml?'<div class="highlight-desc">'+descHtml+'</div>':'')+
@@ -451,48 +467,47 @@ function renderHighlights(data, lgaMap) {
     return '<li><span class="lga-name">'+name+'</span><span class="lga-val">'+val+'</span></li>';
   }
 
-  var html = '';
-  html += card('good','&#127942; Highest submission count',
+  var html2 = '';
+  html2 += card('good','&#127942; Highest submission count',
     'LGAs with the most daily reports submitted. Indicates consistent coordinator reporting.',
-    topSubs.map(function(r){return li(r.lga, r.n+' reports &middot; '+r.days.size+' days');}).join(''));
+    topSubs, function(r){return li(r.lga, r.n+' reports &middot; '+r.days.size+' days');});
 
-  html += card('warn','&#128071; Lowest submission count',
+  html2 += card('warn','&#128071; Lowest submission count',
     'LGAs with the fewest reports. May indicate reporting gaps or coordinator challenges.',
-    bottomSubs.map(function(r){return li(r.lga, r.n+' reports');}).join(''));
+    bottomSubs, function(r){return li(r.lga, r.n+' reports');});
 
-  html += card('good','&#127968; Highest household coverage',
+  html2 += card('good','&#127968; Highest household coverage',
     'LGAs that have visited the most households. Reflects field reach and productivity.',
-    topHH.map(function(r){return li(r.lga, r.hh.toLocaleString()+' households');}).join(''));
+    topHH, function(r){return li(r.lga, r.hh.toLocaleString()+' households');});
 
-  if (bottomHH.length)
-    html += card('amber','&#128071; Lowest household coverage',
+  if (lv === 'all' ? bottomHH.length : applyLGAFilter(bottomHH).length >= 0)
+    html2 += card('amber','&#128071; Lowest household coverage',
       'LGAs with the fewest households visited among those with any data.',
-      bottomHH.map(function(r){return li(r.lga, r.hh.toLocaleString()+' households');}).join(''));
+      bottomHH, function(r){return li(r.lga, r.hh.toLocaleString()+' households');});
 
-  if (zeroHH.length)
-    html += card('warn','&#9888; Zero households recorded',
-      'These LGAs have no household data. Likely not selecting Field Coordination activity type in the form — follow up needed.',
-      zeroHH.map(function(r){return li(r.lga, '<span class="badge b-warn">No HH data</span>');}).join(''));
+  html2 += card('warn','&#9888; Zero households recorded',
+    'These LGAs have no household data. Likely not selecting Field Coordination activity type in the form — follow up needed.',
+    zeroHH, function(r){return li(r.lga, '<span class="badge b-warn">No HH data</span>');});
 
-  if (inactive.length)
-    html += card('warn','&#9201; LGAs not yet submitted',
-      'Last submission date shown. LGAs that have not submitted on the latest data date may need follow-up.',
-      inactive.slice(0,10).map(function(r){return li(r.lga, 'Last: '+r.lastDate);}).join(''));
+  html2 += card('warn','&#9201; LGAs not yet submitted',
+    'Last submission date shown. LGAs that have not submitted on the latest data date may need follow-up.',
+    inactive.slice(0,10), function(r){return li(r.lga, 'Last: '+r.lastDate);});
 
-  html += card('good','&#9989; Best field presence',
+  html2 += card('good','&#9989; Best field presence',
     'LGAs with the highest percentage of reports submitted from within their assigned LGA boundary.',
-    byInside.slice(0,5).map(function(r){return li(r.lga, r.pct+'% inside &middot; '+r.n+' reports');}).join(''));
+    byInside.slice(0,5), function(r){return li(r.lga, r.pct+'% inside &middot; '+r.n+' reports');});
 
-  html += card('amber','&#128205; Lowest field presence',
+  html2 += card('amber','&#128205; Lowest field presence',
     'LGAs with the lowest inside-LGA percentage. Coordinators spending more time outside their assigned area.',
-    byInside.slice(-5).reverse().map(function(r){return li(r.lga, r.pct+'% inside &middot; '+r.n+' reports');}).join(''));
+    byInside.slice(-5).reverse(), function(r){return li(r.lga, r.pct+'% inside &middot; '+r.n+' reports');});
 
-  html += card('info','&#128101; Fewest data collectors',
+  html2 += card('info','&#128101; Fewest data collectors',
     'Total DC assignments across all reporting days. Low counts may limit household and ward coverage.',
-    lowDC.map(function(r){return li(r.lga, r.dcs+' DCs total');}).join(''));
+    lowDC, function(r){return li(r.lga, r.dcs+' DCs total');});
 
-  document.getElementById('highlightsGrid').innerHTML = html;
+  document.getElementById('highlightsGrid').innerHTML = html2;
 }
+
 
 function renderDQFlags(data) {
   var flags = [];
