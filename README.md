@@ -96,12 +96,16 @@ Key properties:
 ├── .github/
 │   └── workflows/
 │       └── fetch-data.yml     # Hourly cron job that runs fetch_data.py
+├── assets/
+│   ├── dashboard.css          # Shared styles (design tokens, responsive, a11y)
+│   ├── dashboard.js           # Shared behaviour (sidebar, filters, data loader)
+│   └── logo.png               # Extracted from the old inline base64 blob
 ├── public/
-│   ├── index.html             # Dashboard (served by GitHub Pages)
+│   ├── index.html             # Legacy standalone dashboard (kept for reference)
 │   └── data.json              # Placeholder — real data lives at repo root
 ├── fetch_data.py              # Kobo → data.json pipeline (Python 3, stdlib only)
-├── index.html                 # Full operations dashboard (source of truth)
-├── insights.html              # Trend & insights view
+├── index.html                 # Operations dashboard (loads assets/*)
+├── insights.html              # Trends & insights view (loads assets/*)
 ├── data.json                  # Latest cleaned dataset (rewritten hourly)
 └── README.md                  # You are here
 ```
