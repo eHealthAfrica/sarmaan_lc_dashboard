@@ -1,0 +1,76 @@
+{
+  "doc_title_line1": "TRACE Evaluation",
+  "doc_title_line2": "SARMAAN LC Dashboard",
+  "subject_line": "SARMAAN LGA Coordinator (LC) Dashboard",
+  "org_line": "eHealth Africa $\\cdot$ SARMAAN / Kano AMR",
+  "repository": "sarmaan\\_lc\\_dashboard",
+  "branch": "feature/trace-evaluation",
+  "commit": "484e2d9",
+  "doc_version": "1.0",
+  "date_line": "August 2026",
+  "status": "Final",
+  "pdf_title": "TRACE Evaluation Report --- SARMAAN LC Dashboard (August 2026)",
+  "pdf_author": "eHealth Africa",
+  "header_left": "eHealth Africa $\\mid$ SARMAAN LC Dashboard --- TRACE Evaluation",
+  "executive_summary_intro": [
+    "This report applies the TRACE Evaluation Framework to the SARMAAN LGA Coordinator (LC) Dashboard --- a deliberately zero-infrastructure static site paired with an hourly GitHub Actions pipeline that pulls field-submission data from KoboToolbox --- as it stands on \\texttt{main} (commit \\texttt{484e2d9}). TRACE scores a complex intervention across five weighted pillars --- Technical, Real-world, Adaptive, Outcomes, Economic --- looking at the whole trajectory (the \\emph{how}) alongside the final result (the \\emph{what}), not a single-point metric.",
+    "\\textbf{This evaluation surfaced a live, currently-ongoing operational failure}, not just a static code review: the repository's own automated data pipeline has failed 100 out of its last 100 recorded runs (verified via \\texttt{gh run list}), with the specific error \\texttt{KOBO\\_TOKEN environment variable not set} (verified via \\texttt{gh run view --log-failed}), and GitHub Pages is not even enabled for this repository (confirmed via the GitHub API). The scores below reflect the platform's \\emph{actual current state}, not only its designed intent --- this is a deliberate and, per this report's framing, necessary departure from evaluating code quality in isolation."
+  ],
+  "key_at_a_glance": [
+    "\\textbf{Overall TRACE score: 4.59 / 10} across 5 pillars and 15 criteria --- the lowest score in this evaluation batch, driven almost entirely by a currently-broken production deployment rather than by code quality",
+    "\\textbf{The system's one automated job has a 0\\% success rate}: 100 of the last 100 \\texttt{Fetch KoboToolbox Data} workflow runs have failed with \\texttt{KOBO\\_TOKEN environment variable not set} --- a one-line configuration fix (adding the missing GitHub Actions secret), not a code defect",
+    "\\textbf{Data has been frozen for over 5 weeks}: \\texttt{data.json} is stamped \\texttt{fetched\\_at: 2026-07-07 01:05 WAT}, more than five weeks stale as of this evaluation (2026-08-11)",
+    "\\textbf{GitHub Pages is not enabled for this repository} (confirmed via \\texttt{gh api repos/.../pages} returning 404) --- there is currently no live URL serving this dashboard at all, despite the README's detailed deployment guide",
+    "\\textbf{Strongest pillar: Economic (6.33 / 10)} --- the underlying `zero-infrastructure' architecture (no server, no database, no hosting bill) is genuinely well-designed and remains sound even while the pipeline is down"
+  ],
+  "findings": [
+    {
+      "type": "finding",
+      "text": "The system's design is genuinely sound where it was actually exercised: a standard-library-only Python fetch script, static GitHub Pages hosting with no server process to keep alive, and a workflow that only commits when fetched data actually changed --- a deliberately minimal, low-cost architecture that the README itself frames accurately (``no server, no database, no hosting bill'')."
+    },
+    {
+      "type": "finding",
+      "text": "README.md is an unusually thorough living document for a project this size: a full architecture diagram, a field-by-field data-pipeline reference, a configuration reference, a troubleshooting table, and a dedicated, honest security-notes section explicitly stating that everything in \\texttt{data.json} must be treated as world-readable because the repository has to be public for free GitHub Pages."
+    },
+    {
+      "type": "finding",
+      "text": "The token-handling design is sound in principle: the KoboToolbox API token lives only in an encrypted GitHub Actions secret and is never written into \\texttt{data.json}, a committed file, or a workflow log."
+    },
+    {
+      "type": "finding",
+      "text": "The specific failure this evaluation found is exactly the failure mode the project's own README.md Troubleshooting table already anticipates (\\texttt{KOBO\\_TOKEN} missing or not configured) --- the team clearly understood this risk in the abstract; it simply was not caught in practice on this specific repository."
+    }
+  ],
+  "issues": [
+    {
+      "label": "Technical / System Performance",
+      "text": "The \\texttt{Fetch KoboToolbox Data} GitHub Actions workflow has failed on every one of its last 100 recorded runs with \\texttt{ERROR: KOBO\\_TOKEN environment variable not set} --- the required repository secret was never configured on this specific repo. \\texttt{data.json} has not refreshed since 2026-07-07.",
+      "mitigation": "Add the \\texttt{KOBO\\_TOKEN} secret under Settings $\\to$ Secrets and variables $\\to$ Actions, exactly as README.md's own deployment guide (\\S2) already instructs, then manually trigger the workflow once from the Actions tab to confirm the fix before waiting for the next hourly slot."
+    },
+    {
+      "label": "Outcomes / Final Success",
+      "text": "GitHub Pages is not enabled for this repository, so there is currently no live URL serving this dashboard to end users at all, independent of the data-freshness issue above.",
+      "mitigation": "Follow README.md's own \\S6 deployment steps to enable GitHub Pages (Settings $\\to$ Pages $\\to$ Deploy from a branch), and resolve the noted \\texttt{/public} vs. repository-root path mismatch the README itself flags between where the workflow writes \\texttt{data.json} and where Pages is configured to serve from."
+    },
+    {
+      "label": "Adaptive / Feedback Loops",
+      "text": "The clearest possible internal feedback signal available for this system --- a workflow failing on every single scheduled run, visible in one click from the repository's own Actions tab --- does not appear to have been acted on for over five weeks.",
+      "mitigation": "Beyond fixing the immediate secret, consider adding a low-effort monitor: GitHub can email repository admins on scheduled-workflow failure by default for private repos, or a simple secondary workflow could open/update a pinned issue when the fetch job fails N times in a row, so a stale-data incident like this one surfaces faster next time."
+    }
+  ],
+  "limitations": [
+    "This is a single-evaluator, qualitative assessment: every 0--10 criterion score is a judgment call grounded in cited evidence (file:line references, commit hashes, or live GitHub Actions run logs), not an automated metric. A second evaluator scoring the same evidence could reasonably land on different numbers within roughly $\\pm$1 point per criterion.",
+    "Unlike every other project evaluated in this TRACE batch, several scores here (System Performance, Final Success, Impact Analysis) are driven primarily by a live operational check performed during this evaluation session (\\texttt{gh run list}, \\texttt{gh run view --log-failed}, \\texttt{gh api repos/.../pages}) rather than by reading source code alone --- these findings reflect the platform's state at evaluation time (2026-08-11) and could change immediately once the missing secret is added.",
+    "This evaluation did not have write access to add the missing \\texttt{KOBO\\_TOKEN} secret or verify the fix; the recommended mitigation in the Issues section above is inferred from the error message and the README's own troubleshooting guidance, not independently tested.",
+    "Real-world and Safety \\& Reliability scores lean partly on the soundness of the system's design \\emph{as written}, which this evaluation judges separately from its current broken operational state --- a reader should not conclude the code itself is poor quality; the gap here is specifically a missing deployment-configuration step.",
+    "TRACE was originally framed around evaluating AI agent behavior in a single task trajectory. Several sub-criteria (Self-Correction, Iterative Design, Evidence Grounding) were reinterpreted for a software-product context, consistent with the reinterpretation already established in the framework's earlier applications and carried forward here for comparability across projects."
+  ],
+  "reproducibility": {
+    "framework_path": "trace\\_evaluation/",
+    "scores_file": "trace\\_evaluation/assessments/sarmaan\\_lc\\_dashboard/scores.json",
+    "scorer_cmd": "python -m trace\\_evaluation.framework.scorer sarmaan\\_lc\\_dashboard",
+    "figures_cmd": "python trace\\_evaluation/scripts/generate\\_figures.py sarmaan\\_lc\\_dashboard",
+    "report_cmd": "python trace\\_evaluation/scripts/generate\\_report.py sarmaan\\_lc\\_dashboard",
+    "note": "The scorer and figure generator are fully generic --- re-running them against an updated scores.json (after adding the missing KOBO\\_TOKEN secret and enabling GitHub Pages) reproduces every number and figure in this report deterministically. A re-evaluation after those two fixes is expected to move System Performance, Real-world, Final Success, and Impact Analysis materially upward, since most of what held them down here was a missing deployment step, not a code defect. No external configuration or network access is required to re-run the scorer itself."
+  }
+}

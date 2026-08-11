@@ -1,0 +1,70 @@
+{
+  "project": "sarmaan_lc_dashboard",
+  "evaluation_target": "The SARMAAN LGA Coordinator (LC) Dashboard -- a zero-infrastructure static site plus an hourly GitHub Actions KoboToolbox data pipeline -- as a software product, including its actual current live operational state, not only its designed intent",
+  "evaluated_by": "Joshua Ogundairo (with Claude Code)",
+  "evaluation_date": "2026-08-11",
+  "commit_evaluated": "484e2d9",
+  "branch_evaluated": "main",
+  "criteria": {
+    "system_performance": {
+      "score": 2.0,
+      "justification": "The system's one automated job -- hourly fetch of KoboToolbox data via GitHub Actions -- has failed 100 out of the last 100 recorded runs (verified via `gh run list`), with the specific, exact error `ERROR: KOBO_TOKEN environment variable not set` (verified via `gh run view --log-failed`). `data.json` is frozen at `fetched_at: 2026-07-07 01:05 WAT` with 742 rows, more than five weeks stale as of this evaluation's date (2026-08-11). This is a complete, currently-ongoing operational failure of the system's entire reason for existing, not a hypothetical or historical risk."
+    },
+    "evidence_grounding": {
+      "score": 7.0,
+      "justification": "fetch_data.py's `clean(row)` function and its `g(row, key)` helper are compact and well-scoped, and README.md explicitly documents the exact shape and meaning of every field the frontend consumes (date, coord, lga, status, activity flags, DC roster counts, issue flags). The README's own troubleshooting guidance states the dashboard 'never mutates the file,' so any numeric mismatch a user sees is traceable directly back to the raw Kobo data -- a genuinely well-grounded, if small, data contract."
+    },
+    "process_efficiency": {
+      "score": 7.0,
+      "justification": "Deliberately minimal-dependency design (Python 3 standard library only for the fetch script, no frontend build step, Chart.js loaded from a CDN) means there is very little to run inefficiently. Each hourly workflow run only commits when the fetched data actually changed (`git diff --cached --quiet || git commit ...`), avoiding no-op commit noise on unchanged data."
+    },
+    "realism_robustness": {
+      "score": 3.0,
+      "justification": "The one deliberate robustness feature -- a coloured freshness status dot (green/amber/red) meant to surface a fetch failure directly to end users -- is a sound design idea, but this evaluation found the system has been in the state that dot is meant to flag (fetch failed) continuously for over five weeks, and nothing beyond that in-page visual indicator (no alerting, no notification to a maintainer) surfaces the failure to anyone not actively looking at the page. The safety mechanism exists but has not, in practice, triggered a fix."
+    },
+    "context_applicability": {
+      "score": 7.5,
+      "justification": "Purpose-built for the real role structure of the SARMAAN/Kano AMR programme: LGA Coordinators reporting daily field activity, with domain-specific fields matching how this specific programme is organized -- geofence in/out-of-LGA status with collected reasons, a Data Collector roster (present/partially present/absent), and an activity-type breakdown (training, field coordination, supervision, stakeholder engagement, problem solving/escalations) that mirrors the coordinators' actual job categories rather than a generic activity log."
+    },
+    "safety_reliability": {
+      "score": 6.5,
+      "justification": "Explicit, honest security design: the Kobo API token lives only in a GitHub Actions secret and README.md confirms it 'never appears in any committed file'; `data.json` is deliberately scoped to non-PII fields with a direct instruction to 'review new fields before adding them to clean(row)'; the README is unusually candid about the public-repo tradeoff required for free GitHub Pages ('treat everything in data.json as world-readable... If you need to hide fields, either drop them in clean(row) or move to a private repo'). Held down by a real, concrete gap: the one secret this entire design depends on (`KOBO_TOKEN`) was never actually configured on this specific repository (see System Performance), so the documented security posture and the actual configured state have drifted apart."
+    },
+    "self_correction": {
+      "score": 2.5,
+      "justification": "Only 2 real, human-authored commits exist beyond the 373 automated hourly data-refresh commits (a README expansion, and a UI/UX standards pass) -- no bug-fix commit is visible anywhere in the history. Most importantly, the one concrete defect this evaluation found (the missing `KOBO_TOKEN` secret causing a 100% pipeline failure rate) has been present and unaddressed for over a month despite being trivially visible on the repository's own Actions tab."
+    },
+    "iterative_design": {
+      "score": 4.5,
+      "justification": "README.md is a genuinely well-organized, thorough living document for the code's size -- an architecture diagram, a configuration reference, a troubleshooting table, and a dedicated security-notes section. But it describes an intended steady state rather than showing evidence of active iteration: with only 2 real commits and an ongoing, unaddressed operational failure, there is little sign of this documentation (or the underlying system) being actively kept in sync with the platform's actual current state."
+    },
+    "feedback_loops": {
+      "score": 2.0,
+      "justification": "No evidence of any feedback loop, external or internal, appears in this repository's history. The clearest possible internal feedback signal available -- a GitHub Actions workflow failing on every single run, visible in one click from the repository's Actions tab -- does not appear to have been acted on for over a month based on the commit history and the current 100% failure rate."
+    },
+    "final_success": {
+      "score": 2.5,
+      "justification": "As designed, this dashboard would competently answer the operational questions it targets. As actually operated right now, it is not succeeding at its core job: GitHub Pages is not even enabled for this repository (confirmed via `gh api repos/.../pages` returning 404), and the data pipeline has failed continuously for five-plus weeks. Whatever success this system was delivering ended with its last successful fetch on 2026-07-07."
+    },
+    "impact_analysis": {
+      "score": 1.5,
+      "justification": "The lowest Impact Analysis score in this evaluation batch, reflecting a compounded gap rather than a single one: like most projects evaluated, no instrumentation measures whether this dashboard has changed real programme outcomes -- but here that absence is compounded by the fact that, as of this evaluation, the dashboard is not even live (no GitHub Pages site enabled) and has not shown current data to anyone in over five weeks."
+    },
+    "process_outcome_link": {
+      "score": 6.5,
+      "justification": "When the pipeline was last running (through 2026-07-07), the link from raw Kobo submissions through `clean(row)` to the specific KPIs and charts shown on the dashboard was clear, traceable, and explicitly documented field-by-field in README.md. This part of the underlying design remains sound in principle even though the pipeline producing the data is not currently running."
+    },
+    "cost_benefit": {
+      "score": 6.0,
+      "justification": "The 'zero-infrastructure' architecture (README.md's own framing: 'no server, no database, no hosting bill') is a genuinely excellent, deliberately minimal-cost design -- static hosting plus a scheduled script, nothing more. The benefit (daily operational visibility for field coordinators) is clear and the marginal cost is close to zero when the pipeline is actually running. Undercut by the fact that even a zero-cost design still requires a minimum of ongoing attention to notice and fix a broken secret, and that attention evidently has not been given for over a month."
+    },
+    "efficiency_analysis": {
+      "score": 7.0,
+      "justification": "Genuinely efficient by design, independent of its current broken operational state: a standard-library-only fetch script, static file hosting with no server process to keep running, a CDN-served charting library requiring no build step, and no-op commits skipped when fetched data hasn't changed."
+    },
+    "scalability": {
+      "score": 6.0,
+      "justification": "The zero-infrastructure design scales close to perfectly for read traffic, since GitHub Pages serves static files. The single-committer-per-hour data model and a single hardcoded `ASSET_UID` scope the architecture to exactly one Kobo form/programme at a time -- a reasonable, intentional design boundary for this specific tool's stated purpose, not a limitation that has emerged from unanticipated growth."
+    }
+  }
+}
