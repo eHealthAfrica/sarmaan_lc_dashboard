@@ -1,0 +1,20 @@
+\contentsline {section}{\numberline {1}Executive Summary}{2}{section.1}%
+\contentsline {section}{\numberline {2}Framework and Methodology}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Technical (20\%)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Real-world (25\%)}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Adaptive (20\%)}{3}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Outcomes (25\%)}{4}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Economic (10\%)}{4}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Results}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Scorecard}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Criterion-Level Detail}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Technical --- 5.33 / 10}{7}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Real-world --- 5.67 / 10}{7}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Adaptive --- 3.00 / 10}{8}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Outcomes --- 3.50 / 10}{8}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Economic --- 6.33 / 10}{9}{subsection.3.7}%
+\contentsline {section}{\numberline {4}Key Findings and Interpretation}{10}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Strengths}{10}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Open Issues}{10}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Limitations of This Evaluation}{12}{section.5}%
+\contentsline {section}{\numberline {6}Reproducibility}{13}{section.6}%
