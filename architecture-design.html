@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SARMAAN LC Dashboard — Architecture Design</title>
+<style>
+  :root{
+    --brand:#155c3a; --brand-2:#1a6d43;
+    --ok:#1D9E75; --warn:#BA7517; --err:#D85A30; --info:#185FA5; --purple:#534AB7;
+    --ink:#1c1c1a; --ink-2:#333333; --ink-mute:#6a6a68;
+    --line:#e3e2da; --bg:#f2f1ec; --bg-2:#f8f7f2; --card:#ffffff;
+    --code-bg:#eef0ea; --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6; font-size:15px;
+    padding:0 0 60px 0;
+  }
+  a{color:var(--info);}
+  header.hero{
+    background:linear-gradient(135deg,var(--brand) 0%, #0d3d26 100%);
+    color:#fff; padding:48px 24px 40px; text-align:center;
+  }
+  header.hero h1{font-size:30px; font-weight:700; letter-spacing:-0.01em;}
+  header.hero .tag{
+    display:inline-block; margin-top:10px; font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.08em; background:rgba(255,255,255,.15);
+    padding:4px 12px; border-radius:20px;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
+  .summary{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:24px 28px; margin:-24px auto 40px; max-width:1032px;
+    box-shadow:0 6px 20px rgba(0,0,0,.08); font-size:16px; color:var(--ink-2);
+    position:relative; z-index:2;
+  }
+  section{margin:48px 0;}
+  h2.section-title{
+    font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--brand); border-bottom:2px solid var(--brand); padding-bottom:8px;
+    margin-bottom:20px; display:flex; align-items:center; gap:8px;
+  }
+  h2.section-title .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; background:var(--brand); color:#fff;
+    font-size:11px;
+  }
+  h3{font-size:16px; margin:18px 0 8px; color:var(--ink);}
+  p{margin-bottom:10px;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:18px 20px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,.04);
+  }
+  .evidence{
+    margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);
+    font-size:12.5px; color:var(--ink-mute);
+  }
+  .evidence strong{color:var(--ink-2); font-weight:700;}
+  code, .path{
+    font-family:var(--mono); background:var(--code-bg); color:#0d3d26;
+    padding:1px 6px; border-radius:4px; font-size:12.5px; white-space:nowrap;
+  }
+  pre{
+    background:#1c1c1a; color:#e8e8e0; padding:14px 16px; border-radius:8px;
+    overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.55;
+    margin:10px 0;
+  }
+  ul{padding-left:20px; margin-bottom:8px;}
+  li{margin-bottom:4px;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line);}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-mute);}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .badge{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px;
+    border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .b-py{background:#EAF3DE;color:#3B6D11;}
+  .b-js{background:#FAEEDA;color:#633806;}
+  .b-yml{background:#E1EAF5;color:#185FA5;}
+  .b-css{background:#F0E7FA;color:#534AB7;}
+
+  /* ---------------- Diagram ---------------- */
+  .diagram{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:36px 24px 28px; overflow-x:auto;
+  }
+  .flow{
+    display:flex; align-items:stretch; gap:0; min-width:920px;
+  }
+  .stage{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:10px;
+    padding:0 6px;
+  }
+  .box{
+    width:100%; border-radius:10px; padding:14px 12px; text-align:center;
+    border:1.5px solid var(--line); background:var(--bg-2);
+  }
+  .box .t{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px;}
+  .box .d{font-size:11.5px; color:var(--ink-mute); line-height:1.4;}
+  .box.kobo{border-color:var(--info); background:#E8F1FA;}
+  .box.kobo .t{color:var(--info);}
+  .box.action{border-color:var(--warn); background:#FBF1E2;}
+  .box.action .t{color:var(--warn);}
+  .box.repo{border-color:var(--ink-mute); background:#EDEDE8;}
+  .box.repo .t{color:var(--ink-2);}
+  .box.pages{border-color:var(--purple); background:#EFEAFA;}
+  .box.pages .t{color:var(--purple);}
+  .box.browser{border-color:var(--ok); background:#E1F5EE;}
+  .box.browser .t{color:var(--ok);}
+  .connector{
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    padding-top:38px; min-width:64px; flex-shrink:0;
+  }
+  .arrow-line{
+    width:100%; height:2px; background:var(--ink-mute); position:relative;
+  }
+  .arrow-line::after{
+    content:''; position:absolute; right:0; top:-4px;
+    border-top:5px solid transparent; border-bottom:5px solid transparent;
+    border-left:8px solid var(--ink-mute);
+  }
+  .connector .lbl{font-size:10px; color:var(--ink-mute); margin-top:4px; text-align:center; white-space:nowrap;}
+  .sub-stage{font-size:10.5px; color:var(--ink-mute); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:3px 8px; margin-top:2px;}
+
+  .cycle-note{
+    margin-top:22px; padding-top:18px; border-top:1px dashed var(--line);
+    display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--ink-mute);
+    justify-content:center; flex-wrap:wrap;
+  }
+  .cycle-note .pill{
+    background:var(--code-bg); color:#0d3d26; padding:3px 10px; border-radius:20px; font-weight:700;
+  }
+
+  footer{text-align:center; margin-top:60px; font-size:12px; color:var(--ink-mute);}
+
+  @media (max-width:800px){
+    .grid-2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>SARMAAN LC Dashboard — End-to-End Architecture</h1>
+  <div class="tag">eHealth Africa &middot; Kano AMR Programme</div>
+</header>
+
+<div class="wrap">
+
+  <div class="summary">
+    <strong>Summary.</strong> The SARMAAN LGA Coordinator Dashboard is a zero-infrastructure,
+    fully static system with no application server and no database. An hourly
+    <strong>GitHub Actions</strong> workflow (<code>.github/workflows/fetch-data.yml</code>) runs a
+    single dependency-free Python 3 script (<code>fetch_data.py</code>) that pulls every submission
+    from a <strong>KoboToolbox</strong> survey asset over its REST API, normalises and flattens each
+    record, and overwrites a single JSON file (<code>data.json</code>) at the repository root. That
+    commit is pushed straight back to <code>main</code> by the `github-actions[bot]` identity, which
+    both updates the dataset and serves as the system's audit trail. <strong>GitHub Pages</strong>
+    serves the static files directly from the repo; two plain HTML pages
+    (<code>index.html</code>, <code>insights.html</code>) fetch <code>data.json</code> client-side,
+    and all filtering, aggregation, and chart rendering (via <strong>Chart.js 4.4.1</strong> from a
+    CDN, plus hand-rolled bar/table widgets) happens in the browser with vanilla JavaScript —
+    there is no build step, framework, or bundler anywhere in the stack.
+  </div>
+
+  <!-- =========================== DIAGRAM =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">◆</span>End-to-end flow</h2>
+    <div class="diagram">
+      <div class="flow">
+
+        <div class="stage">
+          <div class="box kobo">
+            <div class="t">KoboToolbox</div>
+            <div class="d">Survey backend<br>Asset UID<br><code style="white-space:normal;">akucQN6di4hAxuVEZCku4Z</code></div>
+          </div>
+          <div class="sub-stage">kf.kobotoolbox.org/api/v2</div>
+        </div>
+
+        <div class="connector">
+          <div class="arrow-line"></div>
+          <div class="lbl">Token auth<br>GET /data/</div>
+        </div>
+
+        <div class="stage">
+          <div class="box action">
+            <div class="t">GitHub Action</div>
+            <div class="d">Cron <code style="white-space:normal;">0 * * * *</code><br>ubuntu-latest runner</div>
+          </div>
+          <div class="sub-stage">fetch_data.py</div>
+        </div>
+
+        <div class="connector">
+          <div class="arrow-line"></div>
+          <div class="lbl">git commit<br>+ push</div>
+        </div>
+
+        <div class="stage">
+          <div class="box repo">
+            <div class="t">GitHub Repo</div>
+            <div class="d"><code style="white-space:normal;">main</code> branch<br>data.json rewritten</div>
+          </div>
+          <div class="sub-stage">github-actions[bot] commits</div>
+        </div>
+
+        <div class="connector">
+          <div class="arrow-line"></div>
+          <div class="lbl">Pages<br>build &amp; serve</div>
+        </div>
+
+        <div class="stage">
+          <div class="box pages">
+            <div class="t">GitHub Pages</div>
+            <div class="d">Static hosting<br>HTML + CSS + JS + JSON</div>
+          </div>
+          <div class="sub-stage">no server runtime</div>
+        </div>
+
+        <div class="connector">
+          <div class="arrow-line"></div>
+          <div class="lbl">HTTPS<br>fetch()</div>
+        </div>
+
+        <div class="stage">
+          <div class="box browser">
+            <div class="t">Browser</div>
+            <div class="d">index.html / insights.html<br>Chart.js + vanilla JS</div>
+          </div>
+          <div class="sub-stage">client-side render only</div>
+        </div>
+
+      </div>
+
+      <div class="cycle-note">
+        <span class="pill">Cycle repeats every 60 min</span>
+        No secrets reach the browser — <code>KOBO_TOKEN</code> lives only as a GitHub Actions secret,
+        never written to <code>data.json</code> or logs.
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== DATA SOURCES =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">1</span>Data Sources</h2>
+    <div class="card">
+      <p>
+        The single upstream source of truth is a <strong>KoboToolbox</strong> survey form filled out
+        daily by LGA Coordinators (LCs) in the field. The form uses a <code>grp_authed/</code> group
+        prefix on most fields, plus nested repeat groups for device issues, DC roster entries and
+        security incidents.
+      </p>
+      <ul>
+        <li>Asset UID <code>akucQN6di4hAxuVEZCku4Z</code> hosted at
+          <code>https://kf.kobotoolbox.org</code> (public multi-tenant Kobo server) — see
+          <code>ASSET_UID</code> / <code>KOBO_BASE</code> constants at the top of
+          <code>fetch_data.py</code> (lines 10–11).</li>
+        <li>Raw submission fields consumed include <code>today</code>,
+          <code>grp_exercise/report_date</code>, <code>auth_lc_lgalabel</code>,
+          <code>auth_lc_name</code>, <code>grp_geofence/result</code>,
+          <code>grp_geofence/distance_loc_lga</code>, <code>grp_authed/activity_type</code>
+          (space-delimited multi-select codes such as <code>dct</code>, <code>field</code>,
+          <code>sup</code>, <code>mon</code>, <code>stk</code>, <code>tmg</code>, <code>esc</code>,
+          <code>transit</code>), plus repeat-group arrays
+          <code>grp_authed/grp_devices/device_issues</code> and roster/security sub-fields — all
+          referenced inside <code>clean(row)</code> in <code>fetch_data.py</code> (lines 81–158).</li>
+      </ul>
+      <div class="evidence"><strong>Evidence:</strong> <span class="path">fetch_data.py:10-11, 76-158</span></div>
+    </div>
+  </section>
+
+  <!-- =========================== INGESTION =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">2</span>Ingestion</h2>
+    <div class="card">
+      <p>
+        Ingestion is a scheduled pull, not a push/webhook. It is implemented as a single GitHub
+        Actions workflow with no external CI system:
+      </p>
+      <ul>
+        <li><span class="badge b-yml">workflow</span>
+          <code>.github/workflows/fetch-data.yml</code> triggers on
+          <code>schedule: cron '0 * * * *'</code> (hourly, UTC) and on manual
+          <code>workflow_dispatch</code>. It runs on <code>ubuntu-latest</code>, checks out the repo
+          (<code>actions/checkout@v4</code>), executes <code>python3 fetch_data.py</code> with
+          <code>KOBO_TOKEN</code> injected from the repository secret of the same name, then commits
+          and pushes <code>data.json</code> only if it changed
+          (<code>git diff --cached --quiet || git commit ...</code>).</li>
+        <li><span class="badge b-py">script</span>
+          <code>fetch_data.py</code> is stdlib-only Python 3 (<code>urllib.request</code>,
+          <code>json</code>, <code>datetime</code> — no <code>requests</code>, no third-party
+          packages, and correspondingly no <code>requirements.txt</code> in the repo).
+          <code>fetch_all_submissions()</code> pages through
+          <code>/api/v2/assets/&lt;uid&gt;/data/?format=json&amp;limit=500</code>, following the Kobo
+          API's <code>next</code> cursor until exhausted (lines 25–32).</li>
+        <li>Auth uses a bearer-style Kobo token header: <code>Authorization: Token &lt;KOBO_TOKEN&gt;</code>
+          (line 20). The token is never written to disk or to <code>data.json</code>.</li>
+      </ul>
+      <div class="evidence"><strong>Evidence:</strong> <span class="path">.github/workflows/fetch-data.yml</span>, <span class="path">fetch_data.py:6-32</span></div>
+    </div>
+  </section>
+
+  <!-- =========================== STORAGE =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">3</span>Storage</h2>
+    <div class="card">
+      <p>
+        There is no database of any kind (no Postgres/MySQL/SQLite/NoSQL). Persistent state is a
+        single flat JSON file, version-controlled by Git itself:
+      </p>
+      <ul>
+        <li><code>data.json</code> at the repo root — the canonical, currently-served dataset,
+          rewritten by every successful workflow run. Observed shape at time of inspection:
+          <code>{"fetched_at": "...", "total": 742, "rows": [...]}</code>, ~415&nbsp;KB for 742 rows.</li>
+        <li><code>public/data.json</code> — a static placeholder
+          (<code>{"fetched_at":"loading...","total":0,"rows":[]}</code>) kept only for the legacy
+          <code>public/index.html</code>; the README explicitly flags the root-vs-<code>public/</code>
+          ambiguity in GitHub Pages source configuration (README "Note on public/ vs repo root").</li>
+        <li>Git history itself doubles as an audit log/time-series store — every hourly refresh that
+          changes data produces a commit authored by <code>github-actions[bot]</code>, so any past
+          state of the dashboard can be reconstructed from commit history on <code>main</code>.</li>
+      </ul>
+      <div class="evidence"><strong>Evidence:</strong> <span class="path">data.json</span> (742 rows observed), <span class="path">public/data.json</span>, <span class="path">README.md</span> ("Repository layout" / "Note on public/ vs repo root")</div>
+    </div>
+  </section>
+
+  <!-- =========================== TRANSFORMATION =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">4</span>Transformation / Aggregation</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Server-side (build time)</h3>
+        <p><code>clean(row)</code> in <code>fetch_data.py</code> (lines 81–158) does the heavy
+        normalisation once per hourly run:</p>
+        <ul>
+          <li><code>parse_date()</code> — accepts ISO date strings or Excel/Kobo serial-date
+            numbers and coerces both to <code>YYYY-MM-DD</code> (lines 35–50).</li>
+          <li><code>g(row, key)</code> — a lookup helper that transparently tries both the
+            <code>grp_authed/</code>-prefixed and unprefixed field name, absorbing schema drift in
+            the Kobo form (lines 76–78).</li>
+          <li><code>yesno()</code>, <code>safe_int()</code>, <code>safe_float()</code>,
+            <code>safe_str()</code> — type coercion/sanitisation helpers guarding against Kobo's
+            <code>None</code>/<code>nan</code>/em-dash placeholder values (lines 53–74).</li>
+          <li>Multi-select <code>activity_type</code> is split into 8 boolean flags
+            (<code>training</code>, <code>fieldCoord</code>, <code>supervision</code>,
+            <code>dataMonitor</code>, <code>stakeholder</code>, <code>teamMgmt</code>,
+            <code>problemSolving</code>, <code>transit</code>) by testing substring codes
+            (lines 123–130).</li>
+          <li>Nested repeat-group array <code>device_issues</code> is flattened into a
+            <code>device_details</code> list of owner/type/desc/resolved/action objects
+            (lines 144–153).</li>
+          <li><code>main()</code> filters out rows lacking a usable <code>date</code> or
+            <code>lga</code>, sorts the remainder by <code>(date, lga)</code> for deterministic diffs,
+            and serialises to compact JSON with <code>separators=(",", ":")</code> (lines
+            161–186).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Client-side (render time)</h3>
+        <p>All further aggregation is re-computed in the browser on every filter change — nothing is
+        pre-aggregated into rollup tables:</p>
+        <ul>
+          <li><code>index.html</code>'s inline script: <code>getFiltered()</code> applies the
+            date/status/LGA/activity filters (AND-combined) over the in-memory <code>rows</code>
+            array; <code>renderKPIs</code>, <code>renderDaily</code>, <code>renderActivity</code>,
+            <code>renderCoverage</code>, <code>renderCoords</code>, <code>renderIssues</code>, and
+            <code>renderTable</code> each independently reduce that filtered array (group-by-date,
+            group-by-LGA, sum, count) on every call to <code>apply()</code>.</li>
+          <li><code>insights.html</code>'s <code>buildLGAMap(data)</code> builds a richer per-LGA
+            aggregate (submission counts, inside/outside ratio, ward/settlement/household/DC sums,
+            challenge/critical/device/security narrative lists) used by
+            <code>renderHighlights</code> (top/bottom-5 rankings, "inactive since" detection via
+            <code>getYesterdayStr()</code>) and <code>renderLGACards</code>.</li>
+          <li>Shared plumbing (fetch, filter-bar chrome, date multi-select, skeleton/empty/error
+            states) lives once in <code>assets/dashboard.js</code>'s <code>Dashboard</code> module,
+            reused by both pages via <code>Dashboard.init({ onData })</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== APPLICATION LAYER =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">5</span>Application &amp; Service Layer</h2>
+    <div class="card">
+      <p>
+        There is no application server, API layer, or backend process at request time — "the
+        service layer" is entirely the scheduled batch job plus static file serving:
+      </p>
+      <ul>
+        <li><strong>Batch/service process:</strong> the GitHub Actions runner is the only compute
+          that ever executes on a schedule; it exists only for the duration of
+          <code>fetch_data.py</code> and exits (<code>.github/workflows/fetch-data.yml</code>).</li>
+        <li><strong>Hosting:</strong> GitHub Pages serves <code>index.html</code>,
+          <code>insights.html</code>, <code>assets/*</code>, and <code>data.json</code> as plain
+          static files — confirmed by the complete absence of any server framework, Dockerfile,
+          docker-compose file, <code>.env.example</code>, <code>package.json</code>, or
+          <code>requirements.txt</code> in the repository.</li>
+        <li><strong>Shared front-end runtime module:</strong> <code>assets/dashboard.js</code> exposes
+          a single global <code>window.Dashboard</code> object (IIFE pattern) providing
+          <code>init()</code>, <code>getRaw()</code>, <code>getSelectedDates()</code>,
+          <code>buildDateList()</code>, and a polling <code>loadData()</code> that re-fetches
+          <code>data.json?t=&lt;timestamp&gt;</code> with <code>cache:'no-store'</code> every 10
+          minutes (<code>state.refreshIntervalMs</code>, line 24) so an open tab picks up new hourly
+          data without a manual reload.</li>
+        <li><strong>Page-level controllers:</strong> the inline <code>&lt;script&gt;</code> blocks at
+          the bottom of <code>index.html</code> and <code>insights.html</code> act as
+          page-specific controllers that plug a <code>render</code>/<code>apply</code> callback into
+          <code>Dashboard.init({ onData })</code> — effectively a minimal pub/sub between the shared
+          data loader and each page's view logic.</li>
+      </ul>
+      <div class="evidence"><strong>Evidence:</strong> <span class="path">assets/dashboard.js:16-25, 250-303</span>, <span class="path">index.html:481-488</span>, <span class="path">insights.html</span> (equivalent boot block), absence of any manifest/infra file confirmed by directory listing</div>
+    </div>
+  </section>
+
+  <!-- =========================== OUTPUT / PRESENTATION =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">6</span>Output / Presentation</h2>
+    <div class="card">
+      <p>Two HTML pages share one sidebar/layout/theme, driven by a single stylesheet:</p>
+      <ul>
+        <li><code>index.html</code> — "Operations dashboard": KPI strip (7 tiles), a stacked bar
+          chart of daily inside/outside-LGA submissions (<code>Chart.js</code> canvas
+          <code>#cDaily</code>), a horizontal bar breakdown of the 8 activity types, a 4-series line
+          chart of coverage trends (<code>#cCoverage</code>: wards, settlements, DCs,
+          households/10), a ranked coordinator-submission bar list, an issues-flagged panel, and a
+          full per-LGA summary table with a computed TOTAL row.</li>
+        <li><code>insights.html</code> — "Trend &amp; drill-down insights": a Performance Highlights
+          grid (top/bottom-5 by submissions and households, inside-LGA % ranking, lowest DC
+          coverage, "inactive since" list) explicitly computed over the <em>unfiltered</em> full
+          dataset, a Data Quality Flags section, and a card-per-LGA breakdown across all 44 LGAs.</li>
+        <li><strong>Charting:</strong> only the two line/bar canvases use <strong>Chart.js
+          4.4.1</strong>, loaded from
+          <code>cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js</code> with
+          <code>defer</code>; every other "chart" (activity bars, coordinator bars, issue bars) is a
+          hand-built <code>div</code>/<code>width:%</code> bar rendered directly by the page
+          scripts — no charting library involved there.</li>
+        <li><strong>Shared chrome:</strong> collapsible sidebar with `localStorage`-persisted
+          collapsed state, a multi-select searchable date dropdown, a mobile filter-toggle button,
+          skeleton loading placeholders (<code>data-skeleton</code> attributes), and an
+          error/empty-state banner — all implemented once in <code>assets/dashboard.css</code> +
+          <code>assets/dashboard.js</code> and inherited by both pages.</li>
+        <li><code>public/index.html</code> is an older, self-contained single-file version of the
+          same dashboard (inline <code>&lt;style&gt;</code>, inline Chart.js CDN tag, no shared
+          asset files) retained "for reference" per the README, and is not part of the live,
+          currently-maintained data flow.</li>
+      </ul>
+      <div class="evidence"><strong>Evidence:</strong> <span class="path">index.html:140-490</span>, <span class="path">insights.html:139-330+</span>, <span class="path">assets/dashboard.css</span>, <span class="path">public/index.html:1-60</span></div>
+    </div>
+  </section>
+
+  <!-- =========================== TECH STACK =========================== -->
+  <section>
+    <h2 class="section-title"><span class="num">7</span>Tech Stack</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology</th><th>Version / detail</th><th>Where</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Survey backend</td><td><span class="badge b-yml">KoboToolbox</span> API v2</td><td>Hosted, <code>kf.kobotoolbox.org</code></td><td>fetch_data.py:10-11</td></tr>
+          <tr><td>Ingestion runtime</td><td><span class="badge b-py">Python</span></td><td>3.x, standard library only — no pip deps, no requirements.txt</td><td>fetch_data.py:1-8</td></tr>
+          <tr><td>Scheduler / CI</td><td><span class="badge b-yml">GitHub Actions</span></td><td><code>actions/checkout@v4</code>, <code>ubuntu-latest</code>, cron <code>0 * * * *</code></td><td>.github/workflows/fetch-data.yml</td></tr>
+          <tr><td>Version control / audit log</td><td>Git</td><td>Commits by <code>github-actions[bot]</code></td><td>fetch-data.yml:24-30</td></tr>
+          <tr><td>Storage</td><td>Flat JSON file</td><td><code>data.json</code>, ~415 KB / 742 rows observed</td><td>data.json</td></tr>
+          <tr><td>Hosting</td><td>GitHub Pages</td><td>Static, branch <code>main</code>, source <code>/</code> or <code>/public</code> (README flags the mismatch)</td><td>README.md "Deployment"</td></tr>
+          <tr><td>Frontend markup</td><td><span class="badge b-js">HTML5</span></td><td>No templating engine, no build step</td><td>index.html, insights.html</td></tr>
+          <tr><td>Frontend styling</td><td><span class="badge b-css">CSS3</span></td><td>Custom properties / design tokens, no framework (no Bootstrap/Tailwind)</td><td>assets/dashboard.css</td></tr>
+          <tr><td>Frontend logic</td><td><span class="badge b-js">Vanilla JavaScript</span></td><td>ES5/ES6 mix, IIFE module pattern, <code>async/await fetch()</code>, no npm/bundler/framework</td><td>assets/dashboard.js, inline scripts</td></tr>
+          <tr><td>Charting</td><td>Chart.js</td><td><strong>4.4.1</strong>, via cdnjs CDN, <code>chart.umd.js</code></td><td>index.html:11, public/index.html:7</td></tr>
+          <tr><td>Package manifests</td><td>None present</td><td>No <code>package.json</code>, no <code>requirements.txt</code>, no lockfiles</td><td>directory listing</td></tr>
+          <tr><td>Containerisation / IaC</td><td>None present</td><td>No Dockerfile, no docker-compose.yml, no <code>.env.example</code></td><td>directory listing</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Generated from a direct read-through of
+    <code>eHealthAfrica/sarmaan_lc_dashboard</code> (branch <code>main</code>) —
+    every claim above is grounded in a specific file path cited inline.
+  </footer>
+
+</div>
+</body>
+</html>
