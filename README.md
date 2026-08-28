@@ -23,6 +23,10 @@ No server, no database, no hosting bill — just a public repository, a schedule
 
 ---
 
+## Architectural Design
+
+See the [Architectural Design](./architecture-design.html) document for the full end-to-end system flow (data sources, ingestion, storage, transformation, output).
+
 ## What the dashboard shows
 
 The dashboard has two pages (linked from the left sidebar):
